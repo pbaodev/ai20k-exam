@@ -1,0 +1,506 @@
+@EXAM EXAM2
+@LABEL Đề 2
+@TITLE Tổng hợp Phase 2 — AI Applications
+@SCOPE Phase 2
+@DESC Day 17–27: kiến trúc agent, memory, production RAG, GraphRAG, multi-agent, alignment, LangGraph, eval & guardrails, reliability, MCP, HITL.
+
+# ---------- 35 câu một đáp án ----------
+Q: Ý tưởng Skill Library của Voyager được hiện thực trong các agent 2026 dưới dạng nào?
++ Skill files nạp on-demand kèm một file hướng dẫn bền (kiểu CLAUDE.md)
+- Fine-tune lại trọng số model sau mỗi task
+- Lưu toàn bộ transcript vào system prompt
+- Một vector DB chứa mọi tool output thô
+E: Voyager tự đặt mục tiêu, viết code và lưu skill đã được verify để tái dùng. Ngày nay skill là thư mục hướng dẫn + script, chỉ nạp khi cần.
+
+Q: Theo bài về Self-Evolving Agents (ví dụ Darwin Gödel Machine), nguyên tắc an toàn quan trọng nhất là gì?
++ Không đo được thì không được tiến hoá; guardrail đặt ở tầng infrastructure mà agent không có quyền ghi
+- Để agent tự sửa cả guardrail của mình cho linh hoạt
+- Tiến hoá càng nhanh càng tốt, đo sau
+- Chỉ cần prompt dặn agent "đừng làm điều nguy hiểm"
+E: Ba định luật: Endure (an toàn) → Excel (không regression) → Evolve. DGM tự sửa mã nguồn nhưng mọi thay đổi phải được benchmark xác nhận (SWE-bench 20% → 50%).
+
+Q: Compaction khác Eviction ở điểm nào khi quản lý context trong một phiên dài?
++ Compaction dùng LLM tóm tắt toàn cục (lossy, tốn một lượt gọi); Eviction xoá theo luật (rẻ, dự đoán được)
+- Compaction xoá theo luật, Eviction dùng LLM tóm tắt
+- Hai cách giống nhau, chỉ khác tên gọi
+- Eviction luôn giữ lại nhiều thông tin hơn Compaction
+E: Truncation cắt theo vị trí dễ làm mất phần cũ quan trọng. Theo Anthropic, context editing giúp +29%, thêm memory tool +39% và giảm 84% token.
+
+Q: Khi một claim trong câu trả lời không tìm được bằng chứng ở nguồn, hệ thống grounding nên làm gì?
++ Abstain — không khẳng định claim đó (hoặc nói rõ thiếu bằng chứng)
+- Giữ claim vì model thường đúng
+- Tự gắn một nguồn gần giống
+- Tăng temperature để model viết lại
+E: Ba loại lỗi trích dẫn: unsupported claim, misattributed claim, fabricated source. Vòng kiểm tra: parse claim → verify với đúng đoạn nguồn → abstain khi thiếu bằng chứng.
+
+Q: Theo heuristic token budget, khoảng bao nhiêu phần context nên dành cho memory?
++ Khoảng 20% (chia cho short-term, long-term, episodic, semantic) — chỉ là điểm xuất phát
+- Khoảng 80%
+- Khoảng 2%
+- Toàn bộ phần còn trống sau system prompt
+E: Ví dụ: short-term 10%, long-term 4%, episodic 3%, semantic 3%. Với window lớn nên đặt trần tuyệt đối rồi tune bằng eval.
+
+Q: Lưu facts của user vào Redis Set kèm TTL, điều gì cần lưu ý?
++ TTL tính theo key nên cả Set hết hạn cùng lúc; muốn TTL theo từng field phải dùng HEXPIRE
+- Redis không hỗ trợ TTL
+- TTL tự động áp dụng riêng cho từng phần tử của Set
+- SMEMBERS có độ phức tạp O(1) nên không cần lo
+E: Ví dụ TTL gợi ý: preferences 90 ngày, facts 30 ngày, sessions 7 ngày. SMEMBERS là O(N) nên cẩn thận với Set lớn.
+
+Q: Các vendor memory (Mem0, Zep) công bố số liệu benchmark trái ngược nhau. Bài khuyên gì?
++ Tự chạy lại benchmark trên dữ liệu của chính mình trước khi chọn
+- Tin vào con số tốt nhất được công bố
+- Chọn vendor có nhiều sao GitHub nhất
+- Không dùng memory nữa
+E: Số liệu vendor đang tranh cãi. Letta chỉ dùng filesystem đã đạt 74% LoCoMo → khả năng dùng tool quan trọng ngang backend; luôn bọc memory sau interface put/search/delete.
+
+Q: Kỹ thuật "just-in-time retrieval" cho task dài nghĩa là gì?
++ Giữ identifier (đường dẫn, ID) trong context và dùng tool để nạp nội dung khi thật sự cần
+- Nạp toàn bộ dữ liệu vào context ngay từ đầu
+- Retrieve lại toàn bộ corpus sau mỗi lượt
+- Chỉ retrieve khi context đã đầy
+E: Bốn kỹ thuật của Anthropic cho task dài: just-in-time retrieval, compaction, structured note-taking và sub-agents.
+
+Q: Vì sao phần OFFLINE (Parse → Chunk → Enrich → Embed → Index) của RAG đặc biệt quan trọng?
++ Nó đặt trần chất lượng cho toàn hệ — phần online không thể tìm ra thứ chưa được index đúng
+- Vì nó chạy ở mỗi query nên ảnh hưởng latency nhiều nhất
+- Vì nó quyết định model sinh câu trả lời
+- Vì nó thay thế được bước rerank
+E: Offline làm một lần nhưng quyết định những gì có thể tìm thấy; online (PreRAG → Retrieve → Rerank → Augment → Generate → PostRAG) chạy mỗi query.
+
+Q: BM25 cho tiếng Việt cần bước tiền xử lý nào để hoạt động tốt?
++ Tách từ (word segmentation) bằng công cụ như underthesea, VnCoreNLP
+- Chuyển toàn bộ sang chữ in hoa
+- Dịch sang tiếng Anh
+- Bỏ hết dấu thanh
+E: Tiếng Việt là ngôn ngữ đơn lập, một từ có thể gồm nhiều âm tiết ("học sinh"), nên phải tách từ để inverted index khớp đúng đơn vị nghĩa.
+
+Q: Two-stage retrieve → cross-encoder rerank trở nên vô dụng trong trường hợp nào?
++ Khi chunk đúng chưa hề được retrieve vào danh sách ứng viên
+- Khi danh sách ứng viên có 20 chunk
+- Khi dùng bge-reranker-v2-m3
+- Khi query bằng tiếng Việt
+E: Reranker chỉ sắp xếp lại những gì đã có; nó tăng precision (+15–25%) nhưng không cứu được recall. Recall thấp thì sửa ở retrieve.
+
+Q: Câu "Chính sách KHÔNG áp dụng cho nhân viên thử việc" bị retrieve cho câu hỏi về nhân viên thử việc được hưởng gì. Đây là điểm mù nào của embedding?
++ Negation (phủ định)
+- Temporal (thời gian)
+- Numerical (số liệu)
+- Entity-swap (đảo thực thể)
+E: Bốn điểm mù: negation, temporal, entity-swap, numerical. Bù bằng metadata filter, NLI verification, failure-aware routing, GraphRAG hoặc HITL.
+
+Q: Phát biểu nào đúng về RDF so với Property Graph?
++ RDF là chuẩn W3C dùng IRI, truy vấn bằng SPARQL (ví dụ Wikidata)
+- RDF truy vấn bằng Cypher như Neo4j
+- RDF không có quan hệ, chỉ có node
+- RDF chỉ chạy trong bộ nhớ như NetworkX
+E: Property Graph (Neo4j, FalkorDB) có properties trên node/edge và dùng Cypher. RDF dùng RDFS/OWL để mô tả ontology.
+
+Q: Trong hybrid retrieval (vector + graph), "đủ context" được hiểu thế nào?
++ Đủ bằng chứng để trả lời, không phải có nhiều văn bản
+- Lấp đầy context window
+- Có ít nhất 10 chunk
+- Có cả chunk tiếng Anh và tiếng Việt
+E: Vector/hybrid lấy context ban đầu → đủ bằng chứng thì trả lời, chưa thì bổ sung bằng graph (chunk → entity → quan hệ → đường đi) rồi hợp nhất và xếp hạng.
+
+Q: Entity linking trong pipeline xây Knowledge Graph làm gì?
++ Gắn thực thể với ID chuẩn trong kho tri thức (ví dụ Wikidata Q937)
+- Tách câu thành các token
+- Sinh câu trả lời từ subgraph
+- Xoá các node trùng tên
+E: Pipeline: NER → Entity Resolution/Disambiguation → Entity Linking → Relation Extraction → Graph Writer → Graph Store.
+
+Q: Debate agents nên được dùng khi nào?
++ Cho câu hỏi mơ hồ, high-stakes — vì giảm hallucination 15–25% nhưng tốn 2–3× chi phí
+- Cho mọi câu hỏi để luôn chính xác nhất
+- Cho FAQ đơn giản
+- Khi cần latency thấp nhất
+E: Debate: hai agent trả lời độc lập, phản biện nhau, Judge tổng hợp. Dùng model đa dạng để tránh collective delusion.
+
+Q: Khi chạy nhiều agent song song trên production, kích thước agent pool nên đặt theo gì?
++ Theo rate limit của provider
+- Theo số CPU của máy dev
+- Càng lớn càng tốt
+- Bằng số user đang online
+E: Production cần `asyncio.gather`, agent pool khớp rate limit, timeout → retry/fallback, circuit breaker (fail 3 lần → skip) và dead letter queue.
+
+Q: SimPO khác DPO ở điểm nào?
++ Không cần reference model; reward ngầm là average log-prob đã chuẩn hoá theo độ dài, cộng margin γ
+- Cần thêm reward model riêng
+- Chỉ dùng được với nhãn +1/−1
+- Là biến thể RL với nhiều rollout mỗi prompt
+E: Chuẩn hoá theo độ dài giúp giảm length bias của DPO và tiết kiệm VRAM; so với DPO: +6.4 AlpacaEval 2, +7.5 Arena-Hard.
+
+Q: Khi domain adaptation (DAPT/TAPT), cách giảm catastrophic forgetting được khuyến nghị là gì?
++ Replay 50/50 — trộn 50% dữ liệu domain với 50% dữ liệu tổng quát
+- Train thật nhiều epoch chỉ trên dữ liệu domain
+- Tăng learning rate gấp 10 lần
+- Bỏ bước SFT
+E: Thứ tự khi cần nhiều bước: DAPT → TAPT → SFT → DPO. DPO chỉ align hành vi, không dạy kiến thức domain.
+
+Q: Train bị OOM (hết bộ nhớ GPU). Bước xử lý đầu tiên nên thử là gì?
++ Mixed precision (BF16)
+- ZeRO-3/FSDP trên nhiều node
+- Mua GPU mới
+- Giảm dữ liệu train xuống 10%
+E: Thứ tự: mixed precision → gradient checkpointing → FlashAttention 2 → 4-bit (QLoRA) → gradient accumulation → ZeRO/FSDP. Đi từ rẻ, ít thay đổi tới phức tạp.
+
+Q: Dùng output của GPT-4/Claude để sinh dữ liệu train model thương mại có rủi ro pháp lý gì?
++ ToS của các nhà cung cấp cấm dùng output để train model cạnh tranh → nên dùng teacher mở (Llama, Qwen, Mixtral)
+- Không có rủi ro gì
+- Chỉ bị cấm nếu dữ liệu bằng tiếng Việt
+- Chỉ cần ghi nguồn là đủ
+E: Ngoài pháp lý, synthetic data còn có cạm bẫy mode collapse và chất lượng giảm sau 2–3 thế hệ tự sinh.
+
+Q: `recursion_limit` trong LangGraph đếm cái gì?
++ Số super-step đã chạy
+- Số token đã dùng
+- Số lần gọi tool
+- Số giây chạy
+E: Mặc định 1.000. Mười lăm lượt tool ≈ 31 super-step, nên đặt `recursion_limit=25` sẽ lỗi giữa chừng.
+
+Q: `create_deep_agent` kích hoạt summarization middleware khi nào?
++ Khi context đạt khoảng 85% window, giữ lại khoảng 10% gần nhất
+- Sau mỗi lượt gọi model
+- Chỉ khi user yêu cầu
+- Khi context đầy 100%
+E: Deep Agents còn có Filesystem middleware (kết quả > 20k token ghi ra tệp), SubAgent (tool `task`, context riêng) và PatchToolCalls.
+
+Q: Muốn thử một hướng xử lý khác từ một checkpoint cũ mà không xoá lịch sử, dùng tính năng nào của LangGraph?
++ Time travel — fork bằng `update_state` từ checkpoint đó
+- Xoá thread rồi chạy lại
+- Tăng recursion_limit
+- Đổi durability sang exit
+E: Thread là chuỗi checkpoint (mỗi super-step một checkpoint); có thể replay từ checkpoint cũ hoặc fork nhánh mới mà vẫn giữ lịch sử.
+
+Q: Hậu quả của over-filtering guardrails là gì?
++ Refuse rate cao, UX xấu, user học cách lách — cần đo refuse rate và A/B ngưỡng
+- Hệ thống an toàn tuyệt đối mà không có tác dụng phụ
+- Latency giảm mạnh
+- Chi phí API giảm một nửa
+E: Guardrail tốt gần như vô hình với user hợp lệ. Có graceful fallback thay vì từ chối cứng.
+
+Q: Extrinsic hallucination khác intrinsic hallucination ở điểm nào?
++ Extrinsic thêm fact không có trong context; intrinsic mâu thuẫn trực tiếp với context
+- Extrinsic chỉ xảy ra với ảnh
+- Intrinsic do người dùng gây ra
+- Hai loại giống nhau
+E: Intrinsic phát hiện được bằng NLI với context; extrinsic cần đối chiếu knowledge base bên ngoài hoặc fact-check.
+
+Q: Trong CI/CD eval gate, bước security test được đặt ngưỡng thế nào?
++ 30 prompt adversarial, tỉ lệ phát hiện ≥ 95%
+- 1 prompt adversarial là đủ
+- Chỉ test khi có sự cố
+- Ngưỡng phát hiện 50%
+E: Gate gồm: L1 smoke 10 query (schema), L2 RAGAS 100 query (F ≥ 0.85, AR ≥ 0.80), L3 pairwise với bản production (win rate ≥ 50%), Security 30 adversarial (≥ 95%). Fail thì chặn merge.
+
+Q: Hedging (gửi request dự phòng) phù hợp khi nào với LLM?
++ Khi request đầu chậm hơn p95 và request ngắn/rẻ — vì hedging với LLM tốn gấp đôi token
+- Cho mọi request để luôn nhanh nhất
+- Chỉ khi provider trả lỗi 400
+- Thay thế hoàn toàn cho circuit breaker
+E: Google dùng hedging đưa p99.9 từ 1.800ms xuống 74ms chỉ với +2% request. Với LLM chi phí cao nên chỉ dùng chọn lọc.
+
+Q: Sự cố LiteLLM trên PyPI (03/2026) bị chèn mã đánh cắp credential cho bài học gì?
++ Pin version kèm hash (`--require-hashes`), dùng image đã kiểm định, tối thiểu secret trong runtime, có runbook rotate key nhanh
+- Luôn cài phiên bản mới nhất để có bản vá
+- Bỏ hẳn LLM gateway
+- Chỉ cần đổi mật khẩu PyPI
+E: Gateway giữ mọi API key nên là mục tiêu giá trị cao; cũng là single point of failure mới → chạy ≥ 2 replica, có đường bypass khẩn cấp.
+
+Q: Idempotency key cho một action (ví dụ tạo ticket) nên được tạo thế nào?
++ Tạo một lần cho mỗi action, lưu trong state và dùng lại cho mọi lần retry
+- Tạo mới ở mỗi lần retry
+- Dùng timestamp hiện tại mỗi lần gọi
+- Không cần nếu đã có retry
+E: Ví dụ `session:step` hoặc UUID lưu trong state; Stripe giữ key ≥ 24 giờ. Kết hợp durable execution và compensation (saga).
+
+Q: Resources trong MCP là gì?
++ Dữ liệu chỉ đọc, truy cập theo URI giống GET (ví dụ `server://info`)
+- Hành động có side effect do model quyết định gọi
+- Template prompt cho user chọn
+- Danh sách client đang kết nối
+E: Tools = hành động (giống POST), Resources = dữ liệu đọc, Prompts = template gợi ý (ví dụ `/review-pr`).
+
+Q: Đánh đổi chính khi dùng Tool Registry cho 30 MCP server với 200 tool là gì?
++ Registry trở thành single point of failure (cần HA, cache) và quá nhiều tool làm model chọn kém nếu không lọc trước
+- Không thể thêm tool mới
+- Mỗi tool phải deploy lại agent
+- Registry làm mất khả năng audit
+E: Lợi ích: thêm năng lực không cần deploy lại agent, một chỗ để audit, chọn bản mới nhất chưa deprecated (so version bằng semver thật).
+
+Q: Làm sao chọn ngưỡng confidence cho routing HITL một cách có căn cứ?
++ Chạy shadow mode, vẽ confidence so với accuracy thực tế rồi chỉnh theo cost of error
+- Dùng 0.85 cho mọi hệ thống
+- Lấy giá trị model tự báo cao nhất
+- Hỏi model nên đặt ngưỡng bao nhiêu
+E: Không có magic number. Lỗi đắt (ví dụ $10k) → ngưỡng 0.98 hoặc HITL strict; lỗi rẻ → nới hơn.
+
+Q: Một yêu cầu duyệt HITL treo quá lâu (stale state). Cách xử lý đúng là gì?
++ Lưu `generated_at`, quá TTL thì chuyển `FAILED_TIMEOUT` và chạy lại từ đầu với dữ liệu mới
+- Tự động approve khi hết hạn
+- Giữ chờ vô thời hạn
+- Xoá yêu cầu không ghi log
+E: Quyết định nhạy thời gian không được chờ vô hạn vì dữ liệu có thể đã đổi; reject cũng không có nghĩa abort — có thể reroute feedback về agent.
+
+Q: Nguyên tắc batch approvals để giảm alert fatigue là gì?
++ Không trộn mức rủi ro trong cùng một lô, đưa confidence thấp lên đầu, tô màu outlier
+- Gom mọi tác vụ, kể cả DROP TABLE, vào một bảng duyệt
+- Duyệt ngẫu nhiên 10% rồi auto phần còn lại
+- Chỉ hiển thị confidence, ẩn bằng chứng
+E: Batch dành cho tác vụ rủi ro thấp/trung bình, duyệt 2 lần/ngày. Action card cần diff view, reasoning và evidence để quyết định dưới 10 giây.
+
+# ---------- 15 câu nhiều đáp án ----------
+Q: Chọn TẤT CẢ các hook thật sự có trong harness middleware (theo bài).
++ `before_model`
++ `wrap_tool_call`
++ `after_agent`
+- `before_tool_result`
+- `on_token_stream`
+E: Sáu hook: `before_agent`, `before_model`, `wrap_model_call`, `after_model`, `wrap_tool_call`, `after_agent`.
+
+Q: Chọn TẤT CẢ các thành phần đặc trưng của Deep Agents.
++ Plan file (`write_todos`)
++ Filesystem làm external memory
++ Subagent spawning để cô lập context
+- Fine-tune model sau mỗi phiên
+- Xoá toàn bộ lịch sử sau mỗi lượt
+E: Thêm auto-summarisation/offload. Plan file trên đĩa addressable, diffable và sống sót qua compaction.
+
+Q: Chọn TẤT CẢ các loại memory trong Cognitive Memory Model của bài.
++ Short-term (working) memory
++ Episodic memory
++ Semantic memory
+- CPU cache memory
+- GPU VRAM memory
+E: Bốn loại: short-term, long-term (declarative), episodic, semantic — thêm procedural memory (prompt, skills, SKILL.md).
+
+Q: User yêu cầu "xoá mọi thứ về tôi". Chọn TẤT CẢ những nơi cần xoá/kiểm tra.
++ Embeddings trong vector index
++ Summaries và cache dẫn xuất
++ Backup và memory của các agent khác
+- Không cần xác minh sau khi xoá
+- Chỉ cần xoá profile chính là đủ
+E: Right to be forgotten phải xoá ở mọi store và xác minh. Privacy-by-design: mặc định không lưu PII, opt-in.
+
+Q: Chọn TẤT CẢ các cặp "vấn đề → pattern" ĐÚNG trong Production RAG.
++ Vocab của user lệch với tài liệu → HyDE
++ Retrieve kém, cần rẽ nhánh theo chất lượng → CRAG
++ Câu hỏi gồm nhiều phần → Multi-Query
+- Context mâu thuẫn giữa các version → tăng top-k
+- Cần kiểm chứng câu trả lời → tăng temperature
+E: Mâu thuẫn version → conflict resolution (newest-wins); cần kiểm chứng → citation injection; context dư → NLI filter, compression (LLMLingua).
+
+Q: Chọn TẤT CẢ các thành phần nên có trong blueprint Production RAG.
++ Semantic cache trước bước retrieval
++ Hybrid retrieval có ACL filter lúc search
++ LLM Guard kiểm tra injection, PII
+- Lọc quyền truy cập sau khi LLM đã trả lời
+- Lưu API key trong prompt để tiện gọi tool
+E: Blueprint: Gateway → API → Semantic cache → Hybrid retrieval (ACL filter) → Reranker → LLM Guard → Generation (streaming + citation).
+
+Q: Chọn TẤT CẢ các cách khắc phục ĐÚNG cho lỗi GraphRAG.
++ Entity trùng/gộp nhầm → resolution + disambiguation, dùng ID chuẩn
++ Mất cấu trúc khi textualize → giữ triples/path kèm nguồn
++ Traversal quá rộng → lọc loại/hướng cạnh, giới hạn node/path
+- Ontology mơ hồ → bỏ ontology cho linh hoạt
+- Quan hệ thiếu → để LLM tự suy diễn quan hệ
+E: Ontology mơ hồ → định nghĩa schema, ràng buộc, quy tắc mapping. Quan hệ thiếu/suy diễn → kiểm tra cạnh với nguồn, giữ thời gian và provenance.
+
+Q: Chọn TẤT CẢ các workflow pattern trong danh sách 5 pattern của Anthropic.
++ Routing
++ Parallelization (sectioning / voting)
++ Evaluator–Optimizer
+- Blockchain consensus
+- Gradient descent pattern
+E: Năm pattern: Prompt Chaining, Routing, Parallelization, Orchestrator–Workers, Evaluator–Optimizer — xếp theo độ phức tạp tăng dần.
+
+Q: Chọn TẤT CẢ các method alignment KHÔNG cần reference model.
++ SimPO
++ ORPO
+- DPO
+- KTO
+- RLHF (PPO)
+E: Theo method matrix: DPO, IPO, KTO, GRPO và RLHF đều dùng reference model; SimPO và ORPO thì không.
+
+Q: Chọn TẤT CẢ các vai trò mà Reward Model vẫn đảm nhận dù đã dùng DPO.
++ Lọc dữ liệu, bỏ cặp có chosen ≈ rejected
++ Rejection sampling chọn best-of-N cho vòng SFT tiếp theo
++ Best-of-N decoding lúc inference
+- Tính trực tiếp DPO loss
+- Thay thế reference model trong DPO
+E: "Không cần RM cho DPO loss" ≠ "không cần RM ở đâu cả". RM mở tốt năm 2025: Skywork-Reward-V2; benchmark: RewardBench v2.
+
+Q: Chọn TẤT CẢ các guardrail có sẵn trong LangGraph được nêu trong bài.
++ `recursion_limit`
++ `RetryPolicy`
++ Timeout cho node async
+- Tự động HITL cho mọi tool mà không cần cấu hình
+- Tự động mã hoá toàn bộ state
+E: Ngoài ra còn cache và subgraph. `RetryPolicy` không retry lỗi lập trình; HITL phải cấu hình bằng interrupt hoặc HumanInTheLoopMiddleware.
+
+Q: Chọn TẤT CẢ các bias thường gặp của LLM-as-Judge.
++ Position bias
++ Length bias
++ Self-enhancement bias
+- Recall bias
+- Cardinality bias
+E: Bias thứ tư là style/verbosity. Khắc phục: swap-and-average, length-control, cross-judge khác family, rubric chỉ chấm nội dung.
+
+Q: Chọn TẤT CẢ các lớp trong mô hình defense-in-depth 4 layer cho LLM app.
++ Input layer: PII redact, phát hiện injection, kiểm tra chủ đề
++ Output layer: Llama Guard, NLI
++ Audit layer: log bất đồng bộ, sample để review
+- Training layer: fine-tune lại model ở mỗi request
+- DNS layer: đổi tên miền định kỳ
+E: Bốn lớp: Input → LLM (system prompt) → Output → Audit. Latency L1 + L3 nên dưới ~100ms P95, chạy validator song song.
+
+Q: Chọn TẤT CẢ các guardrail đúng cho semantic cache.
++ Scope theo tenant, model, prompt version và ngôn ngữ
++ Loại câu hỏi cá nhân/realtime (số dư, đơn hàng) khỏi allowlist
++ Đo cả hit rate lẫn false-hit rate
+- Dùng ngưỡng cố định 0.7 cho mọi loại câu hỏi
+- Cache cả câu trả lời về số dư tài khoản để giảm chi phí
+E: False hit kiểu "huỷ đơn #123" ≈ "huỷ đơn #124". Ngưỡng nên tune theo loại câu hỏi; thứ tự lookup: exact → semantic → LLM.
+
+Q: Chọn TẤT CẢ các mục trong checklist đưa MCP server từ dev lên production.
++ Auth (Bearer/OAuth/mTLS) kèm scopes
++ Validate mọi tham số do model sinh ra
++ Rate limit, timeout, quota
+- Bind host 127.0.0.1 khi chạy trong container
+- Sửa trực tiếp schema của tool đang chạy
+E: Checklist còn có: transport Streamable HTTP, secret manager, registry, versioning, health check/retry/circuit breaker, structured logging/OpenTelemetry.
+
+# ---------- 10 câu tự luận ----------
+ESSAY: Bạn xây coding agent dùng middleware. Hãy phân bổ các chức năng (budget, trace, nén context, retry/fallback, critic, chặn hành động nguy hiểm, phát hiện doom loop) vào 6 hook và giải thích vì sao luật đặt trong middleware mạnh hơn luật trong prompt.
+K: before_agent/after_agent: khởi tạo/chốt budget, mở/đóng trace root span
+K: before_model: nén context, nạp skill, chèn plan file và bài học
+K: wrap_model_call: retry, fallback, đo latency/cost; after_model: critic (Reflexion), validate schema, phát hiện lặp
+K: wrap_tool_call: gating, allowlist, đổi tham số, intercept result → guardrail bất biến
+K: Prompt rule chỉ là lời đề nghị, model có thể bị thuyết phục bỏ qua; middleware enforce bằng code; doom loop được middleware leo thang cảnh báo → chặn → ép đổi chiến lược → dừng
+M: - **before_agent / after_agent:** khởi tạo và chốt budget (token, số bước), mở/đóng root span của trace.
+M: - **before_model:** tóm tắt/nén context sớm (5–20k token với workload đơn giản), nạp skill liên quan, chèn plan file và bài học từ reflection memory.
+M: - **wrap_model_call:** retry, fallback model, đo latency và chi phí.
+M: - **after_model:** critic kiểu Reflexion (evaluator tách context), validate schema, redact, phát hiện lặp.
+M: - **wrap_tool_call:** gating mọi tool call — allowlist, capability manifest, chặn hoặc sửa tham số nguy hiểm (ví dụ `rm -rf`, push lên main), intercept kết quả để lọc injection.
+M: **Vì sao middleware mạnh hơn prompt:** luật trong prompt chỉ là lời đề nghị; model có thể quên hoặc bị injection thuyết phục. Luật trong `wrap_tool_call` là code, luôn được thực thi. Doom loop cũng vậy: model không tự thấy mình lặp, nhưng middleware thấy và leo thang: cảnh báo → chặn hành động lặp → ép đổi chiến lược → dừng và bàn giao.
+
+ESSAY: Thiết kế hệ thống memory cho một trợ lý cá nhân dùng qua nhiều phiên: loại memory nào lưu ở đâu, khi nào ghi/đọc, xử lý mâu thuẫn và bảo vệ quyền riêng tư.
+K: Short-term: sliding window (system + summary + K lượt cuối) trong checkpointer theo thread_id
+K: Long-term facts/preferences ở Store theo namespace có user_id, có TTL, provenance; episodic lưu task–trajectory–outcome–reflection
+K: Flow: load đầu phiên, extract/persist cuối phiên hoặc background; fact rõ ghi ngay
+K: Mâu thuẫn: recency wins nhưng invalidate (valid_to) thay vì xoá
+K: Privacy & security: không lưu PII mặc định, xoá ở mọi store khi có yêu cầu, coi nội dung ngoài là dữ liệu (chống memory poisoning)
+M: - **Short-term:** sliding window = system + summary + K lượt cuối, lưu bằng checkpointer theo `thread_id` (Postgres ở production).
+M: - **Long-term:** facts và preferences (ví dụ "thích câu trả lời ngắn") lưu ở Store theo namespace `("users", user_id, "facts")`, có semantic search, TTL (prefs 90 ngày, facts 30 ngày) và provenance.
+M: - **Episodic:** lưu (task, trajectory, outcome, reflection) cho các việc đã làm; dọn bằng LRU/importance decay; chưng cất thành procedural (skills) khi lặp lại nhiều.
+M: - **Semantic:** tài liệu domain ở vector DB, truy xuất khi cần.
+M: **Luồng:** `load_memory` đầu graph (short-term → facts → episodes → semantic), `save_memory` cuối graph; fact rõ ràng ghi ngay (hot path), gộp/khử trùng chạy nền.
+M: **Mâu thuẫn:** user đổi từ Java sang Go → recency wins cho hiện trạng nhưng gắn `valid_to` cho fact cũ, không xoá.
+M: **Privacy & an toàn:** mặc định không lưu PII (opt-in); right to be forgotten xoá ở mọi store (embeddings, summary, cache, backup) và xác minh; nội dung từ email/web là dữ liệu, ghi memory bền cần provenance + allowlist loại memory, instruction mới phải qua human review (OWASP ASI06).
+
+ESSAY: RAG nội bộ có kết quả RAGAS: Context Recall 0.82, Context Precision 0.48, Faithfulness 0.71, Answer Relevancy 0.85. Chẩn đoán và đề xuất thứ tự sửa.
+K: Recall đạt ngưỡng → retriever đã lấy đủ; Precision thấp → chunk liên quan bị xếp thấp/lẫn nhiễu
+K: Sửa precision: reranker cross-encoder, score threshold, metadata filter, hybrid/dynamic weighting
+K: Faithfulness 0.71 < 0.85 → siết prompt, citation, hạ temperature, NLI guardrail; nhiễu context cũng làm faithfulness giảm
+K: Answer Relevancy ổn, không cần ưu tiên
+K: Thứ tự rẻ → đắt, mỗi lần đổi một biến, có golden set và CI gate
+M: **Chẩn đoán:**
+M: - Context Recall 0.82 (≥ 0.75): retriever đã mang về đủ thông tin.
+M: - Context Precision 0.48 (< 0.70–0.75): thông tin đúng có trong danh sách nhưng bị xếp thấp và lẫn nhiều chunk nhiễu.
+M: - Faithfulness 0.71 (< 0.85): câu trả lời có claim không được context support — một phần do context nhiễu, một phần do prompt chưa chặt.
+M: - Answer Relevancy 0.85: đạt, chưa cần ưu tiên.
+M: **Thứ tự sửa:**
+M: - Thêm cross-encoder rerank (retrieve top-20 → rerank → top-3/5), đặt score threshold, bổ sung metadata filter → kỳ vọng tăng precision và gián tiếp tăng faithfulness.
+M: - Siết prompt generation: chỉ dùng context, bắt buộc citation, hạ temperature; thêm NLI check ở output.
+M: - Đo lại trên golden set sau mỗi thay đổi (một biến mỗi lần), đưa ngưỡng F ≥ 0.85, CP ≥ 0.70 vào CI gate.
+
+ESSAY: Khi nào nên dùng GraphRAG thay vì flat RAG? Mô tả pipeline xây graph và pipeline truy xuất, kèm các lỗi thường gặp.
+K: Dùng khi câu hỏi multi-hop nối nhiều thực thể/quan hệ; flat RAG đủ khi thông tin nằm gọn vài đoạn; chọn phương án đơn giản nhất đạt chất lượng
+K: Build: NER → entity resolution/disambiguation → entity linking → relation extraction → graph writer → graph store, có ontology
+K: Retrieval: entity trong câu hỏi → seed nodes → BFS k-hop → textualize subgraph → LLM; hybrid với vector khi chưa đủ bằng chứng
+K: Lỗi: ontology mơ hồ, entity trùng, quan hệ thiếu/suy diễn, traversal quá rộng, mất nguồn khi textualize
+K: Chi phí: index đắt hơn + cập nhật + vận hành; index đắt không có nghĩa query rẻ
+M: **Khi nào dùng:** câu hỏi cần suy luận quan hệ qua nhiều thực thể (ví dụ "Công ty A sở hữu gián tiếp công ty nào qua B?", hay nối tin tức với điều luật). Flat RAG đủ khi thông tin nằm gọn trong vài đoạn ("chính sách nghỉ phép quy định gì?"). Luôn chọn phương án đơn giản nhất đạt chất lượng, kiểm chứng bằng bộ câu hỏi thực tế.
+M: **Pipeline build:** định nghĩa ontology (loại entity, quan hệ, ràng buộc) → NER → entity resolution & disambiguation → entity linking (ID chuẩn) → relation extraction (luật, supervised, GLiNER/GLiREL hoặc LLM theo schema) → ghi vào graph store (Neo4j) kèm provenance.
+M: **Pipeline truy xuất:** trích entity từ câu hỏi → tìm seed nodes → BFS k-hop có lọc loại/hướng cạnh → textualize subgraph (giữ triples + nguồn) → LLM trả lời. Kết hợp hybrid: vector retrieval trước, chưa đủ bằng chứng mới bổ sung bằng graph.
+M: **Lỗi thường gặp:** ontology mơ hồ, entity trùng hoặc gộp nhầm, quan hệ thiếu/bịa, seed sai và traversal quá rộng, mất nguồn khi textualize, thiếu cập nhật/ACL. Chi phí tổng = index + cập nhật + N × query + vận hành.
+
+ESSAY: Thiết kế một hệ multi-agent nghiên cứu (research report). Nêu vai trò, pattern, cách quản lý state và các failure guard; giải thích khi nào KHÔNG nên dùng multi-agent.
+K: Vai trò rõ (Searcher/Researcher, Analyst, Writer, Critic) với supervisor hoặc orchestrator-worker
+K: Song song phần đọc (Send/map-reduce), một agent ghi; worker trả tóm tắt nén
+K: State có reducer, trace; tránh context loss across handoffs
+K: Guards: max iterations, timeout, circuit breaker, stop condition, verifier/critic với model đa dạng
+K: Không dùng khi single agent > 80%, logic tuần tự phụ thuộc chặt; benchmark single vs multi theo quality, latency, cost
+M: **Vai trò:** Supervisor phân rã câu hỏi → nhiều Searcher chạy song song (fan-out bằng `Send`), mỗi con đọc một nhóm nguồn và trả tóm tắt nén 1–2k token → Analyst tổng hợp → Writer viết báo cáo (một agent duy nhất ghi) → Critic/Verifier kiểm tra trích dẫn, có thể dùng model khác họ.
+M: **State:** `messages`, `worker_results` (reducer nối thêm), `final_answer`, `trace`; định nghĩa rõ ai được ghi trường nào để tránh InvalidUpdateError và context loss khi handoff.
+M: **Failure guards:** max iterations chống routing loop, timeout + retry/fallback cho từng worker, circuit breaker (fail 3 lần → skip), dead letter queue, stop condition và rubric định nghĩa trước (theo MAST), tracing bằng LangSmith/Langfuse.
+M: **Khi KHÔNG dùng:** single agent đã > 80% accuracy; bài toán là planning tuần tự (thêm agent có thể −70%); nhiều agent phải cùng ghi một sản phẩm. Luôn benchmark single vs multi theo quality, latency và cost (multi-agent ~15× token so với chat).
+
+ESSAY: Bạn có một model tiếng Việt đã SFT. Hãy đề xuất chiến lược alignment phù hợp với từng tình huống dữ liệu và cách theo dõi để tránh "train thành công nhưng model tệ hơn".
+K: Có cặp preference → DPO (β ≈ 0.1); chưa có SFT → ORPO; chỉ có thumbs → KTO; math/code có ground truth → GRPO + RLVR; stack SFT → DPO → RLVR
+K: Xây dữ liệu VN: prompts từ SFT set/VMLU, sinh 2 response, judge bằng model mạnh, lọc cặp gap nhỏ (RM)
+K: Theo dõi log: chosen tăng, rejected giảm, margin mở rộng; cảnh báo likelihood displacement, length hacking (> 30%), sycophancy
+K: Khắc phục: lọc cặp, SimPO/IPO, dừng sớm, chỉnh β; chạy iterative
+K: Đánh giá bằng nhiều nhóm benchmark (static + judge-based + human), dùng 2 judge
+M: **Chọn method theo dữ liệu:**
+M: - Có model SFT + cặp (prompt, chosen, rejected) → **DPO** (bắt đầu β = 0.1), là baseline tốt nhất 2025–2026.
+M: - Chỉ có nhãn thumbs-up/down từ production → **KTO**.
+M: - Muốn đi thẳng từ base, tiết kiệm VRAM → **ORPO**; length bias là vấn đề → **SimPO**.
+M: - Task math/code có đáp án kiểm tra được → thêm **GRPO + RLVR** sau DPO (recipe Tulu 3: SFT → DPO → RLVR), chạy iterative.
+M: **Dữ liệu tiếng Việt:** lấy ~200 prompt từ SFT set hoặc VMLU, sinh 2 response (model hiện tại và model mạnh hơn), dùng GPT-4o/Claude làm judge hiểu ngữ cảnh Việt, dùng reward model lọc cặp chosen ≈ rejected.
+M: **Theo dõi:** training khoẻ khi `rewards/chosen` tăng, `rewards/rejected` giảm, margin mở rộng. Cảnh báo: `rewards/chosen` giảm (likelihood displacement), độ dài tăng > 30% (length hacking), câu nào cũng "Great question!" (sycophancy) → lọc cặp gap nhỏ, đổi SimPO/IPO, dừng sớm, chỉnh β.
+M: **Đánh giá:** static (VMLU, MMLU, IFEval để xem có quên kiến thức), judge-based (pairwise với 2 judge khác nhau), cùng human review.
+
+ESSAY: Thiết kế trợ lý xử lý khiếu nại hoàn tiền bằng LangGraph theo mô hình "deterministic shell bọc agentic core". Chỉ rõ chỗ cần interrupt, durability và idempotency.
+K: Shell do kỹ sư vẽ: Intake (PII) → Router → Agent core điều tra (budget ≤ N calls, subagent) → kiểm tra chính sách → Approval gate → Hoàn tiền
+K: Interrupt ở approval gate (HumanInTheLoopMiddleware approve/edit/reject/respond); luật số tiền đặt trong wrap_tool_call
+K: Resume chạy lại node → side effect ở node riêng sau duyệt + idempotency key
+K: Checkpointer Postgres, durability sync cho bước có tiền; Store cho thông tin dùng qua nhiều thread
+K: Trace, eval 3 lớp (final output, trajectory, regression) làm gate trong CI
+M: **Kiến trúc:** Intake (lọc/che PII) → Router (phân loại khiếu nại) → **Deep agent điều tra** (subagent kho, vận chuyển, ảnh; giới hạn ≤ 15 model calls) → Kiểm tra chính sách (luật cứng) → **Approval gate** → Node hoàn tiền → End. Phần biết trước do kỹ sư vẽ thành graph; chỉ phần điều tra để model tự chọn bước.
+M: **Interrupt:** tại approval gate dùng `interrupt()`/HumanInTheLoopMiddleware (approve · edit · reject · respond); reject có thể đưa feedback quay lại agent core. Luật "hoàn tiền > 2 triệu phải duyệt" đặt trong `wrap_tool_call`, không chỉ trong prompt.
+M: **Idempotency:** resume chạy lại node từ đầu → lệnh gọi API hoàn tiền nằm ở node riêng sau bước duyệt, kèm idempotency key lưu trong state để retry không hoàn hai lần.
+M: **Durability:** checkpointer Postgres; durability `sync` cho bước liên quan đến tiền; thông tin khách dùng qua nhiều vụ (ví dụ "thích được gọi điện") lưu ở Store.
+M: **Vận hành:** trace chỉ ra bước lỗi; eval 3 lớp (final output, trajectory, regression set) chặn trong CI; recursion_limit đặt đủ lớn theo số super-step thực tế.
+
+ESSAY: Thiết kế guardrails và quy trình đánh giá liên tục cho chatbot ngân hàng dựa trên RAG.
+K: Input: PII redact (regex CCCD/SĐT + Presidio), phát hiện injection (direct + indirect), topic scope; fail-fast, fail-closed cho rủi ro cao
+K: Output: Llama Guard/safety, NLI faithfulness, kiểm tra citation; audit log async
+K: Session poisoning: thay input độc trong history; kiến trúc hạn chế quyền (OWASP LLM06 excessive agency)
+K: Eval pyramid L1–L4 và CI gate (smoke, RAGAS, pairwise, security) chặn merge
+K: Online: sample 1–5% traffic, judge đã calibrate (kappa ≥ 0.6), đo refuse rate tránh over-filtering, incident → test case
+M: **Guardrails (defense-in-depth):**
+M: - L1 Input: redact PII tiếng Việt (regex CCCD, SĐT, MST + Presidio NER) → kiểm tra injection (Prompt Guard/Lakera, decode Base64 rồi kiểm lại) → topic scope; fail-fast, timeout thì fail-closed vì đây là ngân hàng.
+M: - L2 LLM: system prompt rõ phạm vi, tài liệu RAG đánh dấu là dữ liệu.
+M: - L3 Output: Llama Guard cho safety, NLI giữa context và câu trả lời, bắt buộc citation; thông tin số tiền quan trọng → chuyển người.
+M: - L4 Audit: log bất đồng bộ, sample 1% để review. Chạy validator song song để giữ latency < ~100ms.
+M: - Chống session poisoning bằng cách thay input độc trong history bằng placeholder; giới hạn tool/quyền theo least privilege (LLM06).
+M: **Đánh giá liên tục:**
+M: - CI gate: smoke 10 query (schema) → RAGAS 100 query (F ≥ 0.85, AR ≥ 0.80) → pairwise với bản production (win ≥ 50%) → 30 prompt adversarial (≥ 95%); fail thì chặn merge.
+M: - Online: chấm 1–5% traffic bằng LLM judge đã calibrate với người (Cohen's kappa ≥ 0.60), theo dõi drift và refuse rate để tránh over-filtering; mỗi incident → reproduce → fix → thêm test case.
+
+ESSAY: Thiết kế lớp reliability cho một LLM gateway phục vụ nhiều tính năng: retry, circuit breaker, fallback, cache và SLO/alert.
+K: Retry chỉ lỗi transient (429/5xx/529/timeout), một tầng, backoff + full jitter, tôn trọng retry-after, retry budget
+K: Circuit breaker theo provider × model × region, rate-based + slow call, không tính 4xx; state chia sẻ (Redis/gateway); half-open giới hạn probe
+K: Fallback ladder (cùng model khác region → provider khác → model nhỏ → cache → thông báo/người) với compatibility check; task rủi ro cao không hạ model
+K: Cache: prompt caching (static trước), semantic cache có scope + đo false hit; idempotency cho side effect
+K: SLO (kể cả quality SLO), error budget, burn-rate alert; chaos test; bảo mật supply chain của gateway
+M: **Retry:** chỉ retry 408/429/5xx/529/timeout; không retry 400/401/403/422 hay 429 hết credit. Exponential backoff + full jitter, ưu tiên `retry-after`, retry ở đúng một tầng với retry budget < 10% để tránh amplification.
+M: **Circuit breaker:** một breaker cho mỗi provider × model × region; rate-based (≥ 50% lỗi trong 20 call, tối thiểu 10) và tính cả slow call vượt SLO; không tính lỗi 4xx của mình; state lưu ở Redis hoặc ngay tại gateway; HALF-OPEN chỉ cho 1–3 probe read-only.
+M: **Fallback ladder:** bậc 0 cùng model khác region → bậc 1 model tương đương provider khác → bậc 2 model nhỏ → bậc 3 cached response → bậc 4 thông báo + chuyển người; model fallback phải qua compatibility check (tool calling, structured output, context, tiếng Việt) và cùng eval suite. Task y tế/tài chính không hạ xuống model yếu.
+M: **Cache & chi phí:** prompt caching với phần tĩnh đặt đầu; semantic cache có allowlist intent, scope theo tenant/model/prompt version, đo hit và false-hit; budget theo request/user/tháng.
+M: **SLO & alert:** availability, TTFT P95, fallback success và quality SLO (faithfulness); alert theo burn rate (14.4 → page); chaos test (brown-out, provider sập) với kill switch. Gateway chạy ≥ 2 replica, pin dependency kèm hash.
+
+ESSAY: Thiết kế cơ chế HITL cho một agent có quyền hoàn tiền và gửi email cho khách: phân loại hành động, confidence routing, UI duyệt, audit và lộ trình tăng tự chủ.
+K: Phân loại theo impact × reversibility; hard rules (giao dịch tài chính, dữ liệu nhạy cảm) luôn qua người bất kể confidence
+K: Confidence routing ≥ 0.85 / 0.70–0.85 / < 0.70, calibrate bằng self-consistency hoặc critic, tune ngưỡng bằng shadow mode
+K: LangGraph: checkpointer bền, interrupt_before cho hành động nguy hiểm, interrupt_after cho bản nháp, TTL, reject có thể reroute
+K: UI action card (diff, reasoning, evidence, confidence màu), batch approvals, tránh alert fatigue/rubber stamping
+K: Audit trail append-only từ ngày 1; metrics approval/response time/override; progressive autonomy và data flywheel cho DPO
+M: **Phân loại:** draft email nội bộ, tra cứu → tự động (reversible). Gửi email cho khách, hoàn tiền → không đảo ngược được → HITL. Hard rules ở tầng application: mọi giao dịch tài chính trên ngưỡng, sửa PII → luôn qua người dù confidence 99%.
+M: **Confidence routing:** ≥ 0.85 auto (log), 0.70–0.85 suggest + one-click approval, < 0.70 hỏi/escalate. Không tin điểm thô: calibrate bằng self-consistency (5 mẫu) hoặc critic; chọn ngưỡng bằng shadow mode theo cost of error.
+M: **Triển khai:** LangGraph + PostgresSaver, `thread_id` theo vụ; `interrupt_before` trước node hoàn tiền/gửi email, `interrupt_after` cho bản nháp; lưu `generated_at`, quá TTL → FAILED_TIMEOUT; reject kèm feedback quay lại agent.
+M: **UI:** action card gồm loại hành động, đối tượng, confidence có màu, diff trước/sau, reasoning, evidence; nút Approve/Reject/Edit; batch các tác vụ rủi ro thấp, không trộn rủi ro, confidence thấp lên đầu.
+M: **Audit & đo lường:** bảng append-only (timestamp, thread_id, action, confidence, reviewer, decision, reasoning) từ ngày 1; theo dõi approval rate, response time, override rate (> 30% → prompt/threshold có vấn đề).
+M: **Lộ trình:** tháng 1 strict 100% → tháng 2 tự động nhóm nhỏ khi approval ≥ 98% → tháng 3 agent xử lý ~60% workload; mỗi lần người Edit tạo cặp (prompt, rejected, chosen) làm dữ liệu DPO.

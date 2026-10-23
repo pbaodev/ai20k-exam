@@ -1,0 +1,712 @@
+# Bộ 10 câu cho các ngày mà file md chưa có trắc nghiệm dạng A–D.
+# Quy ước: dòng "+" là đáp án đúng, "-" là đáp án sai (build sẽ tự trộn vị trí).
+
+@QUIZ DAY1
+Q: Theo AI Taxonomy, LLM nằm ở vị trí nào?
++ Là Foundation Model chuyên về ngôn ngữ, thuộc nhánh Deep Learning
+- Là một nhánh Machine Learning cổ điển, không dùng neural network
+- Là một loại rule engine viết tay
+- Là tầng bao trùm toàn bộ AI
+E: Các tầng lồng nhau: AI ⊃ Machine Learning ⊃ Deep Learning ⊃ Foundation Models ⊃ LLM. LLM là Foundation Model chuyên ngôn ngữ — nền tảng của cả Generative AI lẫn Agentic AI.
+
+Q: "Goal → Plan → Action" là đặc trưng của nhóm AI nào?
++ Agentic AI
+- Discriminative AI
+- Generative AI
+- Rule-based AI
+E: Discriminative AI: Input → Label (lọc spam, chấm điểm tín dụng). Generative AI: Prompt → Content. Agentic AI nhận mục tiêu, tự lập kế hoạch và hành động.
+
+Q: Kiến trúc voicebot nào có độ trễ thấp (~300–800ms), giữ được ngữ điệu nhưng khó chèn logic nghiệp vụ và transcript kém tin cậy cho audit?
++ Speech-to-speech (realtime) như OpenAI Realtime API, Gemini Live
+- Cascaded pipeline STT → LLM → TTS
+- Chatbot text thuần
+- IVR bấm phím
+E: Cascaded pipeline kiểm soát từng khâu, log được transcript, rẻ hơn nhưng độ trễ cộng dồn 1–2s. Speech-to-speech nhanh và tự nhiên hơn nhưng khó kiểm soát. Thực tế nhiều hệ dùng lai.
+
+Q: "Harness" của một agent là gì?
++ Toàn bộ phần không phải model bao quanh LLM: vòng lặp, quản lý context, tool registry, quyền, bộ nhớ, log
+- Bộ trọng số đã huấn luyện của model
+- Giao diện chat cho người dùng cuối
+- Một loại GPU chuyên chạy agent
+E: Cùng một model, harness tốt hay tệ tạo khác biệt rất lớn. Phần lớn lỗi "agent ngu" là lỗi harness (context tràn, tool trả lỗi khó hiểu, thiếu điều kiện dừng). Đổi model chỉ vài dòng, đổi harness là viết lại hệ thống.
+
+Q: Agent Skills dùng cơ chế "progressive disclosure" nghĩa là gì?
++ Agent chỉ đọc dòng description của mọi skill, khi việc khớp mới nạp toàn bộ nội dung skill đó
+- Nạp toàn bộ skill vào system prompt ngay từ đầu
+- Skill tự cập nhật trọng số của model
+- Người dùng phải bật từng skill bằng tay mỗi lần dùng
+E: Context window có hạn nên không thể nhét mọi quy trình công ty vào system prompt. Skill là thư mục (SKILL.md + script + tài liệu) chỉ được mở ra khi thật sự cần.
+
+Q: Trong bộ bốn mảnh ghép của agent (Tool calling, MCP, Skills, Harness), MCP trả lời câu hỏi nào?
++ Agent cắm vào hệ thống nào — chuẩn kết nối tới tool/dữ liệu bên ngoài
+- Agent làm việc đó thế nào cho đúng quy trình
+- Agent chạy an toàn và bền bỉ ra sao
+- Model nào rẻ nhất cho tác vụ
+E: Tool calling: agent làm được gì. MCP: cắm vào hệ thống nào (CRM, Jira, database). Skills: làm việc đó thế nào cho đúng. Harness: chạy an toàn, bền ra sao. Bốn khái niệm bổ sung, không thay thế nhau.
+
+Q: Self-attention trong Transformer làm gì?
++ Cho mỗi token "nhìn" mọi token khác trong context để gán trọng số chú ý (ví dụ "Nó" chú ý mạnh vào "con mèo")
+- Xử lý từng token tuần tự giống RNN
+- Nén cả câu vào một vector cố định
+- Chỉ nhìn đúng một token ngay trước nó
+E: Attention(Q, K, V) = softmax(QKᵀ/√d_k)·V. Transformer bỏ recurrent nên song song hoá được — đột phá năm 2017; đổi lại chi phí tăng theo O(n²) với độ dài chuỗi.
+
+Q: Vì sao cùng một nội dung, gọi API bằng tiếng Việt thường tốn chi phí hơn tiếng Anh?
++ Tiếng Việt có dấu, ký tự Unicode nên bị tách thành nhiều token hơn
+- Nhà cung cấp tính giá tiếng Việt gấp đôi
+- Model phải dịch sang tiếng Anh trước khi xử lý
+- Tiếng Việt luôn phải dùng model lớn hơn
+E: Một token ≈ 0.75 từ tiếng Anh nhưng chỉ ≈ 0.5 từ tiếng Việt; mỗi từ có dấu có thể thành 1–2 token → nhiều token hơn → chi phí cao hơn.
+
+Q: Chatbot có 1.000 lượt/ngày, mỗi lượt 500 token input và 200 token output, dùng model giá $3/1M input và $15/1M output. Chi phí mỗi ngày là bao nhiêu?
++ $4.50
+- $1.20
+- $9.00
+- $18.00
+E: Input 500K × $3/1M = $1.50; output 200K × $15/1M = $3.00 → tổng $4.50/ngày (~$135/tháng). Output thường đắt hơn input 3–5 lần.
+
+Q: Trong response của API, `stop_reason = "max_tokens"` cho biết điều gì?
++ Câu trả lời bị cắt ngang vì chạm giới hạn max_tokens
+- Model đã trả lời xong một cách tự nhiên
+- Model muốn gọi một tool
+- Request bị lỗi xác thực
+E: stop_reason có ba giá trị chính: end_turn (xong tự nhiên), max_tokens (bị cắt do giới hạn), tool_use (model muốn gọi tool). Với Anthropic API, max_tokens là tham số bắt buộc.
+
+@QUIZ DAY5
+Q: "Build the thing wrong" khác "build the wrong thing" ở điểm nào?
++ Đúng vấn đề nhưng thực thi kém: requirement mơ hồ, thiếu acceptance criteria, không lường trước rủi ro
+- Sai vấn đề hoặc giá trị: không hiểu JTBD, chọn sai persona
+- Chọn model quá nhỏ cho bài toán
+- Chọn sai nhà cung cấp cloud
+E: Build the wrong thing = sai "cái gì" (JTBD, persona, value không đủ lớn). Build the thing wrong = sai "cách làm" (requirement mơ hồ, không có AC đo được, không lường trước edge case).
+
+Q: Agent trả lời đúng nhưng không có citation nên nhân viên không dám gửi cho khách. Đây là thất bại ở lớp job nào?
++ Emotional job — muốn cảm thấy tự tin, ít sợ sai
+- Functional job — hoàn thành việc
+- Social job — được nhìn nhận chuyên nghiệp
+- Technical job — chạy đúng kỹ thuật
+E: JTBD có 3 lớp: functional (làm việc gì), emotional (cảm thấy thế nào), social (được nhìn nhận ra sao). Chỉ nhìn functional job thì agent "đúng chức năng" nhưng không ai dùng lại.
+
+Q: North Star Metric phù hợp cho một AI support agent là gì?
++ First-response resolution rate
+- Số câu trả lời AI đã tạo ra
+- Độ dài trung bình của câu trả lời
+- Số ticket được phân loại mỗi giờ
+E: North star phải đo outcome (kết quả thật), không đo output (hoạt động). "Số câu trả lời" là vanity metric — vẫn tăng ngay cả khi AI trả lời sai và ticket bị mở lại.
+
+Q: Theo EU AI Act, chatbot thông thường (phải cho người dùng biết họ đang nói chuyện với AI) thuộc mức rủi ro nào?
++ Limited risk — có nghĩa vụ minh bạch
+- Unacceptable risk — bị cấm
+- High-risk — cần quản lý rủi ro và human oversight
+- Minimal risk — không có nghĩa vụ gì
+E: EU AI Act tiếp cận theo mức rủi ro: Unacceptable (cấm, ví dụ social scoring) → High-risk (tuyển dụng, tín dụng, y tế, giáo dục) → Limited (nghĩa vụ minh bạch như chatbot) → Minimal.
+
+Q: Persona cho AI product cần thêm những chiều nào so với persona thường?
++ AI literacy, mức sẵn sàng tin automation, ngưỡng chấp nhận sai, nhu cầu explainability
+- Tuổi, giới tính, thu nhập
+- Thiết bị và hệ điều hành đang dùng
+- Màu sắc giao diện yêu thích
+E: Các chiều này quyết định mức tự động hoá, cách hiển thị confidence/citation và thiết kế fallback — hai người cùng vai trò có thể cần hai UX khác nhau.
+
+Q: Loại tín hiệu feedback nào nối chất lượng AI với business value?
++ Outcome signal (resolved, booked, escalated)
+- Explicit signal (👍/👎, rating)
+- Behavioral signal (copy, rephrase, override)
+- Số lần mở ứng dụng
+E: Explicit đo chất lượng user cảm nhận (thường < 5% user bấm), behavioral phát hiện trust và friction, còn outcome nối thẳng chất lượng AI với giá trị kinh doanh.
+
+Q: Requirement nào được viết đúng chuẩn "đo được"?
++ Trả lời dưới 5s ở p95, trích dẫn đúng nguồn nội bộ, escalate sang người khi confidence thấp
+- Agent phải trả lời nhanh, chính xác và thông minh
+- Agent dùng model mới nhất trên thị trường
+- Agent làm hài lòng mọi người dùng
+E: Phép thử: nếu engineer không biết cách test thì requirement chưa đủ rõ. Dùng percentile (p95) thay vì trung bình vì trung bình che giấu các request rất chậm.
+
+Q: Acceptance criteria tốt cho một tính năng AI gồm những thành phần nào?
++ Trigger, hành vi mong đợi, ngưỡng đo được, failure handling
+- Tên model, prompt, temperature, giá API
+- Mockup, màu sắc, font chữ, logo
+- Chỉ một happy path duy nhất
+E: Công thức: When X happens, the agent should Y within Z seconds, and if failure condition occurs, it should fallback behavior. Thiếu failure handling là thiếu phần quan trọng nhất của AI.
+
+Q: Trong Risk Matrix, rủi ro có likelihood cao và impact cao (ví dụ lộ dữ liệu cá nhân) được xử lý thế nào?
++ Escalate — đưa vào quyết định Go / No-Go
+- Monitor — chỉ theo dõi
+- Mitigate — giảm nhẹ khi rảnh
+- Bỏ qua vì khó xảy ra
+E: Thấp–thấp: Monitor; likelihood cao–impact thấp: Mitigate; likelihood thấp–impact cao: Reduce; cao–cao: Escalate/Go-No-Go. Mỗi risk cần owner, mitigation và trigger theo dõi.
+
+Q: Khi nào nên ra quyết định "No-go"?
++ Còn rủi ro privacy/compliance lớn chưa xử lý, chưa có fallback hoặc chưa chứng minh được user value
+- Rủi ro cao đã có mitigation rõ, acceptance criteria đo được, owner rõ
+- Có thể pilot giới hạn với HITL và guardrails chặt
+- Đã viết xong PRD đủ 8 phần
+E: Go: rủi ro có mitigation + AC đo được + owner. Conditional go: pilot hẹp, human-in-the-loop, guardrails chặt. No-go: rủi ro lớn chưa xử lý, thiếu fallback hoặc chưa chứng minh được giá trị.
+
+@QUIZ DAY5v2
+Q: Bốn nguồn bất định khiến AI mang tính xác suất là gì?
++ Input, Logic, Output, Thời gian
+- CPU, RAM, Disk, Network
+- Prompt, Model, Tool, UI
+- Dữ liệu, Nhân sự, Ngân sách, Pháp lý
+E: Input (ngôn ngữ tự nhiên vô hạn), Logic (trọng số học từ dữ liệu — đoán chứ không tra), Output (chọn token theo xác suất), Thời gian (model/data/user đổi → drift). Không tắt được — chỉ thiết kế hệ thống xung quanh.
+
+Q: Thiếu hai mục nào thì một PRD "chưa phải AI PRD"?
++ Acceptance threshold theo tỉ lệ và failure modes
+- Logo và bảng màu
+- Tên model và giá API
+- Timeline và ngân sách
+E: AI PRD v2 thêm input/context, output spec, acceptance theo tỉ lệ (ví dụ ≥ 90% pass rubric trên 20 transcript), test distribution, failure modes, feedback. Thiếu threshold và failure modes là chưa đạt.
+
+Q: Theo 4 loại rủi ro của Marty Cagan, team AI hay dồn sức sai chỗ thế nào?
++ Dồn vào Feasibility, trong khi rủi ro lớn nhất thường là Value
+- Dồn vào Value, trong khi rủi ro lớn nhất là Feasibility
+- Dồn vào Viability, trong khi rủi ro lớn nhất là Usability
+- Dồn vào Usability, trong khi rủi ro lớn nhất là Viability
+E: Bốn rủi ro: Value, Usability, Feasibility, Viability. Nên test giả định đắt nhất (leap of faith — thường là value) bằng cách rẻ nhất, ví dụ Wizard of Oz.
+
+Q: Fireflies đã kiểm chứng giá trị trước khi build AI bằng cách nào?
++ Hai founder vào cuộc họp dưới tên bot "Fred", gõ note tay hơn 100 cuộc và thu phí $100/tháng
+- Train model ghi âm 6 tháng rồi mới ra mắt
+- Mua lại một startup AI có sẵn
+- Chỉ khảo sát online mà không có sản phẩm
+E: Đây là Wizard of Oz MVP: người đóng vai AI, user tưởng đang dùng máy → kiểm chứng value và mental model trước khi viết dòng code nào.
+
+Q: Công thức trust calibration trong bài là gì?
++ Trust = Expectation + Explainability + Control
+- Trust = Accuracy × Latency
+- Trust = Brand + Price
+- Trust = Model size + Data size
+E: Thiếu một trụ thì hai trụ còn lại không đỡ nổi. Mục tiêu là trust đúng mức — tránh overtrust (giao việc quá mức, nguy hiểm) và distrust (underuse).
+
+Q: Vì sao hiển thị "387 kcal" cho ảnh món ăn là lỗi thiết kế?
++ Tạo ra precision giả, khiến user tin quá mức (overtrust)
+- Con số quá nhỏ, khó đọc
+- Thiếu đơn vị đo
+- Không có màu sắc minh hoạ
+E: Nên hiển thị khoảng (350–430 kcal) kèm lý do bất định. Cách trung thực nhất là để hệ thống cư xử khác nhau theo mức tự tin.
+
+Q: Mức tự chủ (agency) của AI nên được quyết định dựa trên gì?
++ Độ chắc chắn × cái giá khi sai
+- Kích thước model
+- Số lượng người dùng
+- Độ dài prompt
+E: Cùng 70% chắc: autocomplete (sai rẻ) thì cứ làm; xoá dữ liệu, chuyển tiền (sai đắt) thì hỏi và nói rõ hậu quả. Thêm undo là cách rẻ nhất để mở rộng vùng "tự làm".
+
+Q: Thưởng cho model theo proxy "chat ngắn" dẫn tới điều gì sau 8 tuần?
++ Thời lượng chat giảm 40% nhưng tỉ lệ hỏi lại/gọi tổng đài tăng 31%
+- Chất lượng tăng đều trên mọi chỉ số
+- Không có gì thay đổi
+- Chi phí tăng gấp đôi nhưng CSAT tăng mạnh
+E: Model tối ưu đúng thứ được thưởng (Goodhart's Law). Phải thưởng mục tiêu thật (không hỏi lại trong 7 ngày, không gọi tổng đài) và đặt kèm guardrail metric.
+
+Q: User thích một bài của nghệ sĩ A nhưng toàn nhận gợi ý cùng thể loại và phàn nàn "app không hiểu tôi". Đây là loại lỗi gì?
++ Context error — hệ chạy đúng thiết kế nhưng lệch kỳ vọng; PM chịu trách nhiệm xử lý
+- System error — model dự đoán sai; ML/Eng sửa
+- User error — input sai mục đích; UX sửa
+- Infrastructure error — server gặp sự cố
+E: Context error là loại lỗi chỉ AI mới có. Cách xử lý: giải thích lý do gợi ý, cho user chỉnh ("gợi ý theo nghệ sĩ này"), thu phản hồi và đóng vòng ngay.
+
+Q: Hệ thống lọc nội dung độc hại cho trẻ em nên ưu tiên chỉ số nào?
++ Recall — bỏ lọt là thảm hoạ, kèm đường kháng nghị cho false positive
+- Precision tuyệt đối
+- Latency thấp nhất
+- Throughput cao nhất
+E: Precision = trong số nói "có", đúng bao nhiêu; Recall = trong số thật sự "có", bắt được bao nhiêu. Bỏ lọt là thảm hoạ → ưu tiên recall; sai mà không ai biết (auto-send, duyệt vay) → ưu tiên precision.
+
+@QUIZ DAY7
+Q: Hiểu nhầm phổ biến nhất về fine-tuning là gì?
++ Dùng fine-tune để nạp kiến thức mới, trong khi fine-tune dạy model "cách nói" còn RAG cấp "điều cần nói"
+- Fine-tune giúp đổi giọng điệu và format
+- Fine-tune cần chuẩn bị dataset
+- Fine-tune tốn GPU
+E: Fine-tune học giọng điệu, format, hành vi nhưng khó cập nhật. Dữ liệu thay đổi thường xuyên → RAG. Hai cách có thể kết hợp: RAG lo kiến thức, fine-tune lo giọng văn.
+
+Q: CAG (Cache-Augmented Generation) ngoài thực tế tương ứng với kỹ thuật nào?
++ Prompt caching — nạp tài liệu cố định một lần vào KV-cache rồi tái sử dụng
+- Lưu vector vào DB rồi tìm kiếm tương đồng
+- Train lại trọng số của model
+- Gọi API bên ngoài ở mỗi lượt
+E: CAG không cần embed, không cần DB; độ trễ thấp nhưng chỉ hợp khi dữ liệu vừa context và ít đổi. Thử theo thứ tự rẻ → đắt: In-context/CAG → RAG → Fine-tune.
+
+Q: Câu hỏi "Đơn #123 đang ở đâu?" nên lấy dữ liệu qua kênh nào?
++ Query/MCP (tool calling) realtime, vì đây là operational data
+- RAG từ vector DB
+- Long-term memory của user
+- Fine-tune model hằng ngày
+E: Knowledge data (policy, FAQ) → RAG; Operational data (đơn hàng, CRM, ticket) → Query/MCP; Contextual data (session, profile) → memory inject. Không phải thứ gì cũng nên đưa vào vector DB.
+
+Q: Kích thước chunk khuyến nghị để mỗi chunk trọn một ý là bao nhiêu?
++ 200–500 token, overlap 10–15%
+- Dưới 50 token
+- Trên 1.000 token
+- Cả file là một chunk
+E: Chunk quá to gom nhiều chủ đề vào một vector và kéo nhiễu; quá nhỏ thì mất ngữ cảnh ("Trong 30 ngày." áp dụng cho việc gì?). Bắt đầu chunk theo heading rồi tối ưu bằng eval.
+
+Q: Retrieve trúng chunk nhưng LLM thiếu ngữ cảnh để trả lời. Nên đổi sang chiến lược chunking nào?
++ Parent-child hoặc Sentence-window
+- Fixed-size với chunk nhỏ hơn nữa
+- Proposition chunking
+- Bỏ chunking, đưa cả file
+E: Parent-child: search trên chunk con nhỏ, inject chunk cha lớn. Sentence-window: index 1 câu, lúc inject lấy thêm k câu xung quanh. Nếu vấn đề là bị nhiễu thì mới thu nhỏ chunk hoặc dùng proposition.
+
+Q: Vì sao với text embedding nên mặc định dùng cosine similarity?
++ Hầu hết model trả vector đã normalize — khi đó cosine và Euclidean cho cùng thứ hạng; cosine đo hướng (nội dung)
+- Cosine luôn nhanh hơn Euclidean 10 lần
+- Euclidean không áp dụng được cho vector
+- Cosine không cần embedding model
+E: Với vector độ dài 1, ‖A−B‖² = 2 − 2cos nên thứ hạng như nhau. Euclidean hợp khi độ lớn mang thông tin thật (toạ độ GPS, cảm biến, k-means).
+
+Q: Phát biểu nào về embedding là ĐÚNG?
++ Query và document phải dùng cùng một embedding model
+- Ngưỡng score 0.7 đúng cho mọi model
+- Embedding mạnh nhất ở exact match mã sản phẩm
+- Đổi embedding model không cần re-index
+E: Hai model là hai không gian vector khác nhau, so với nhau là vô nghĩa. Ngưỡng score phụ thuộc model nên phải calibrate; embedding yếu exact match → hybrid BM25 + vector; đổi model phải re-index toàn bộ.
+
+Q: Một record trong vector store gồm những thành phần nào?
++ ID, chunk (text gốc), vector, metadata
+- Chỉ có vector
+- Top-k results và similarity score
+- Prompt và câu trả lời của LLM
+E: Vector dùng để tìm, chunk dùng để inject vào prompt. Top-k là output khi query, không phải thứ được lưu. Metadata quan trọng ngang similarity (filter, citation, debug).
+
+Q: FAISS khác các vector database như Qdrant ở điểm nào?
++ FAISS là thư viện ANN rất nhanh nhưng không phải DB: không có metadata filter, không có persistence sẵn
+- FAISS là dịch vụ managed serverless
+- FAISS chỉ chạy được bên trong Postgres
+- FAISS có hybrid search dựng sẵn
+E: Chroma hợp học/prototype, pgvector khi đã có Postgres, Qdrant/Weaviate để tự host production, Pinecone khi không muốn lo hạ tầng, Milvus cho quy mô tỉ vector.
+
+Q: Lỗi retrieval chỉ lộ ra lúc query thường sinh ra ở đâu, và nên debug thế nào?
++ Thường ở khối Input Control hoặc Processing; debug ngược từ Indexing về Input
+- Luôn ở khối Indexing; chỉ cần đổi embedding model
+- Ở LLM; đổi sang model lớn hơn
+- Ở giao diện; sửa lại UI
+E: Ingestion có 3 khối: Input Control → Processing → Indexing. Index sai nguồn hoặc bỏ qua bước clean chỉ lộ ra khi query, nên phải debug ngược 3 → 1.
+
+@QUIZ DAY9
+Q: Nguyên tắc cốt lõi khi chia việc cho nhiều agent là gì?
++ Song song hoá việc ĐỌC, tuần tự hoá việc GHI
+- Song song hoá mọi thứ để nhanh nhất
+- Tuần tự hoá việc đọc, song song hoá việc ghi
+- Cho mọi agent cùng ghi vào một file
+E: Ví dụ của Cognition: 2 subagent cùng làm Flappy Bird, một vẽ nền kiểu Mario, một vẽ chim Flappy Bird → sản phẩm lệch nhau vì cùng ghi mà không đồng bộ.
+
+Q: Câu hỏi kiểm tra "Sau lời gọi này, tới lượt ai nói với user?" giúp phân biệt điều gì?
++ Agents-as-tools (agent gọi nói tiếp) với Handoff (agent được gọi nói tiếp)
+- MCP với A2A
+- Supervisor với Pipeline
+- Gọi đồng bộ với bất đồng bộ
+E: Agents-as-tools: gọi rồi trả kết quả về agent gọi, worker chỉ thấy input được truyền. Handoff: chuyển hẳn quyền lái, mặc định agent mới thấy toàn bộ lịch sử hội thoại.
+
+Q: Anti-pattern "God Supervisor" là gì?
++ Supervisor tự plan, retrieve, synthesize — thực chất là single-agent đổi tên
+- Worker liên tục hỏi ngược lại supervisor
+- State đi qua biến toàn cục và side effect
+- Worker gặp lỗi không trả gì về
+E: Supervisor không cần thông minh nhất, chỉ cần route đúng và tổng hợp. Ba anti-pattern còn lại: Chatty Workers, Implicit State, No Fallback.
+
+Q: Thay đổi lớn nhất của spec MCP 2026-07-28 là gì?
++ Bỏ session: mỗi request tự mang version + capabilities trong `_meta`, state cần giữ được truyền bằng explicit handle
+- Bỏ JSON-RPC, chuyển sang SOAP
+- Bỏ Tools, chỉ còn Resources
+- Bắt buộc mọi server chạy qua stdio
+E: Trước đây dùng handshake initialize + header Mcp-Session-Id. Bỏ session giúp request nào cũng xử lý được ở máy nào → dễ scale, chạy serverless (ví dụ `create_cart()` trả về `cart_id`).
+
+Q: Agent của hãng bay giao việc tìm khách sạn cho agent của một công ty du lịch khác nên dùng giao thức nào?
++ A2A
+- MCP
+- REST API hard-code
+- Shared state trong cùng một graph
+E: MCP = agent ↔ tool (phía kia chỉ thực thi). A2A = agent ↔ agent (phía kia có quyền tự quyết). Hai worker trong cùng một graph thì chỉ cần shared state.
+
+Q: Bỏ reducer khỏi trường `trace` trong state LangGraph thì chuyện gì xảy ra?
++ Trace chỉ còn 1 dòng của node ghi cuối, vì mỗi node ghi đè im lặng
+- LangGraph báo lỗi ngay khi compile
+- Trace vẫn tự động nối như cũ
+- Graph chạy chậm hơn nhưng không đổi kết quả
+E: Ghi tuần tự vào key không có reducer → ghi đè không báo lỗi. Muốn gộp phải khai báo reducer như `Annotated[list, operator.add]`.
+
+Q: Vì sao side effect (gửi mail, trừ tiền) trong node có `interrupt()` phải idempotent hoặc tách sang node khác?
++ Khi resume, node chạy lại từ đầu nên side effect có thể chạy hai lần
+- Vì checkpointer xoá state sau khi interrupt
+- Vì interrupt chỉ được gọi một lần trong đời graph
+- Vì InMemorySaver không hỗ trợ gửi email
+E: Cùng `thread_id` thì resume được, nhưng resume chạy lại node từ đầu chứ không từ dòng interrupt. Production nên dùng checkpointer Sqlite/Postgres thay InMemorySaver.
+
+Q: Theo Anthropic (2025), hệ multi-agent tốn khoảng bao nhiêu token so với chat thường?
++ Khoảng 15 lần
+- Khoảng 1.5 lần
+- Khoảng 4 lần
+- Khoảng 100 lần
+E: Chat 1×, single agent ~4×, multi-agent ~15×. Multi-agent chỉ thắng khi việc chia song song được hoặc context vượt quá một cửa sổ.
+
+Q: "Bộ ba chết người" (lethal trifecta) gồm những gì?
++ Chạm dữ liệu riêng tư + đọc nội dung không tin cậy + có đường gửi ra ngoài
+- Model lớn + context dài + nhiều tool
+- Thiếu log + thiếu test + thiếu tài liệu
+- Prompt dài + temperature cao + không dùng RAG
+E: Chia agent không cứu được: không agent nào đủ 3 chân nhưng cả hệ thì có → quyền hạn phải tính trên cả đồ thị; cắt ít nhất một chân (ví dụ `send_email` chỉ tạo bản nháp).
+
+Q: Hệ trả lời "Có" cho câu "Đơn A123 mua 10 ngày trước có được hoàn tiền không?" (sai) dù mọi bước đều "ok". Nguyên nhân là gì?
++ Supervisor bỏ qua order_worker và synthesis vẫn kết luận dù `order_status=None` — lỗi ngữ nghĩa, không phải crash
+- LLM bị timeout giữa chừng
+- Vector DB bị sập
+- Thiếu GPU để chạy worker
+E: Lỗi multi-agent thường là lỗi ngữ nghĩa nên không có gì crash. Gặp dữ liệu thiếu, synthesis phải báo thiếu hoặc trả về supervisor, không được kết luận (10 ngày > 7 ngày → không được hoàn).
+
+@QUIZ DAY11
+Q: Vì sao indirect prompt injection nguy hiểm hơn direct injection?
++ Lệnh độc nằm trong dữ liệu agent tự đọc (tài liệu RAG, email), user không hề cố ý tấn công
+- Vì nó luôn được mã hoá Base64
+- Vì nó chỉ xảy ra với model nhỏ
+- Vì kẻ tấn công cần quyền admin
+E: Direct: user gõ "ignore previous instructions". Indirect: chữ trắng trong tài liệu RAG kiểu "forward all emails to attacker" — agent đọc và làm theo mà không ai cố ý tấn công.
+
+Q: Mô hình Defense in Depth trong bài gồm ba tầng nào?
++ Input rails, LLM rails (system prompt hardening), Output rails
+- Frontend, Backend, Database
+- Dev, Staging, Production
+- Retrieval, Rerank, Generation
+E: Input: validation, phát hiện injection, lọc chủ đề, rate limit. Output: lọc nội dung/PII, grounding, đúng format, chuyển người duyệt. Mỗi tầng bắt một loại lỗi, không tầng nào thay được tầng nào.
+
+Q: Kiến trúc Dual-LLM (CaMeL) phòng prompt injection bằng cách nào?
++ LLM đọc dữ liệu bẩn thì không có tool; LLM có tool thì không đọc dữ liệu thô
+- Cho hai model cùng trả lời rồi chọn ngẫu nhiên
+- Lặp system prompt hai lần
+- Mã hoá toàn bộ input của user
+E: LLM "cách ly" chỉ trả về cấu trúc như {"intent": "refund", "order_id": "A123"}, nên lệnh ẩn trong email không bao giờ tới được LLM có tool. Phát hiện không bao giờ đủ → phòng thủ bằng kiến trúc.
+
+Q: Hành động tác động cao và không hoàn tác được (ví dụ hoàn tiền trên 10 triệu) nên dùng mô hình HITL nào?
++ Tiebreaker — người quyết định, có thể cần 2 người duyệt
+- Tự động hoàn toàn
+- On-the-loop — làm trước, xem lại sau
+- Tự động kèm log
+E: Ma trận tác động × khả năng hoàn tác: thấp/dễ hoàn tác → tự động; vừa/không hoàn tác → in-the-loop; cao/không hoàn tác → tiebreaker + 2 người.
+
+Q: Theo bài, tín hiệu nào YẾU NHẤT khi quyết định có cần người duyệt hay không?
++ `confidence` do chính model tự báo
+- Loại hành động
+- Giá trị giao dịch
+- Tín hiệu bất thường
+E: Thứ tự xét: loại hành động → giá trị → tín hiệu bất thường. Confidence model tự báo thường lệch cao. Mẹo rẻ nhất để giảm HITL là làm hành động hoàn tác được (lưu nháp, soft delete, "Hoàn tác trong 30s").
+
+Q: Vì sao `if confidence < 0.7: chờ duyệt` chưa đủ cho HITL ở production?
++ Process chết hoặc deploy mới là mất yêu cầu đang chờ — HITL phải lưu state bền xuống DB
+- Vì 0.7 là ngưỡng quá thấp
+- Vì Python không xử lý được câu if này
+- Vì người duyệt không đọc được confidence
+E: HITL = state bền vững: `interrupt()` + `Command(resume=...)` + checkpointer Postgres. Người duyệt trả lời sau 5 phút hay 5 ngày vẫn chạy tiếp đúng chỗ.
+
+Q: Yêu cầu duyệt hết hạn mà chưa ai phản hồi thì hệ thống nên làm gì?
++ Tự động TỪ CHỐI (fail-closed)
+- Tự động approve để không chặn user
+- Thử lại vô hạn
+- Giao cho model tự quyết
+E: Không bao giờ tự approve khi hết hạn; hành động rủi ro mặc định bị chặn. Ngoài ra duyệt hai lần thì hành động vẫn chỉ chạy một lần (idempotent).
+
+Q: "Automation bias" trong HITL nghĩa là gì?
++ Agent đúng 98% khiến người duyệt quen tay bấm Approve mà không đọc
+- Model thiên vị một nhóm người dùng
+- Người duyệt từ chối mọi yêu cầu
+- Tự động hoá làm giảm chi phí
+E: Thêm người duyệt thứ hai không giúp nhiều. Giải pháp: giảm số lần hỏi, đưa bằng chứng ngay trong màn duyệt, cài sẵn vài ca sai để đo xem người duyệt có bắt được không.
+
+Q: Cách test công bằng nhanh cho một model lọc CV là gì?
++ Giữ nguyên CV, chỉ đổi tên "Nguyễn Văn Nam" ↔ "Nguyễn Thị Lan" rồi so sánh điểm
+- Đếm tổng số CV được duyệt
+- Đo thời gian chấm mỗi CV
+- Hỏi model xem nó có thiên vị không
+E: Điểm khác nhau khi chỉ đổi tên/giới tính → model không trung lập. Hai loại tác hại: phân bổ (ai được duyệt) và định kiến (rập khuôn nghề nghiệp, vùng miền).
+
+Q: Luật AI 134/2025 của Việt Nam (hiệu lực 1/3/2026) yêu cầu gì với chatbot?
++ Phải báo cho user biết đang nói chuyện với AI, và con người quyết định cuối trong việc quan trọng
+- Bắt buộc dùng model do Việt Nam phát triển
+- Cấm hoàn toàn chatbot trong ngân hàng
+- Chỉ áp dụng cho doanh nghiệp nước ngoài
+E: Kèm theo đó, PDPL 91/2025 (1/1/2026) yêu cầu đồng ý rõ ràng, quyền xoá dữ liệu, báo vi phạm trong 72 giờ. Với một số sản phẩm, HITL giờ là nghĩa vụ pháp lý.
+
+@QUIZ DAY12
+Q: Railway, Render, Cloud Run thuộc tầng dịch vụ cloud nào?
++ PaaS — bạn chỉ lo code, nền tảng lo runtime, scaling, vá lỗi OS
+- IaaS — bạn lo mọi thứ từ OS trở lên
+- SaaS — bạn chỉ việc dùng phần mềm
+- On-premise — tự mua phần cứng
+E: IaaS (EC2, S3, VPC): toàn quyền nhưng tốn công vận hành nhất. PaaS: chỉ lo code. SaaS (Gmail, OpenAI API): chỉ việc dùng.
+
+Q: Trong 12-Factor App, factor "Stateless" yêu cầu gì?
++ Không giữ session trong RAM của instance, đưa ra Redis
+- Không dùng database
+- Mỗi instance có config riêng viết cứng trong code
+- Chỉ chạy đúng một instance
+E: Nếu lịch sử chat nằm trong RAM của instance A, request tiếp theo rơi vào instance B sẽ mất ngữ cảnh → muốn scale ngang thì app phải stateless.
+
+Q: Vì sao Dockerfile nên copy file dependency (requirements.txt) trước rồi mới copy code?
++ Dependency ít đổi nên layer cài đặt được cache, build lại nhanh
+- Để image nhỏ hơn 10 lần
+- Để container chạy bằng non-root
+- Vì Docker bắt buộc thứ tự này
+E: Mỗi lệnh tạo một layer có cache; code đổi thường xuyên đặt sau để không làm mất cache của layer cài dependency. Multi-stage build mới là thứ giảm kích thước image.
+
+Q: Vì sao không nên chạy container bằng user root?
++ Khi bị exploit, kẻ tấn công có ngay quyền root
+- Root chạy chậm hơn
+- Docker không cho phép dùng root
+- Root không đọc được biến môi trường
+E: Bảy quy tắc Dockerfile: multi-stage, copy deps trước, `.dockerignore`, non-root user, pin version, `HEALTHCHECK`, `CMD` dạng JSON array.
+
+Q: JWT khác API key ở điểm nào?
++ JWT verify bằng chữ ký mà không cần gọi DB nhưng khó thu hồi; API key revoke được ngay
+- JWT không có thời hạn sử dụng
+- API key mã hoá payload còn JWT thì không
+- JWT chỉ dùng cho giao tiếp service-to-service
+E: JWT = header.payload.signature; payload chỉ base64 (ai cũng đọc được) nên token phải sống ngắn kèm refresh. API key: server hash rồi mới lưu, hợp service/B2B.
+
+Q: Với ứng dụng LLM, vì sao giới hạn số request chưa đủ để bảo vệ chi phí?
++ Một request dài có thể tốn bằng 100 request ngắn → cần ngân sách token/tiền theo user mỗi ngày
+- Vì request không tốn tiền
+- Vì rate limit làm chậm hệ thống
+- Vì LLM không tính phí theo token
+E: Cost guard đặt ngân sách token/tiền theo user/ngày và chặn khi vượt, bổ sung cho các thuật toán rate limit như token bucket hay sliding window.
+
+Q: Thuật toán load balancing nào hợp với AI inference có request dài ngắn rất khác nhau?
++ Least connections
+- Round robin
+- IP hash
+- Chọn ngẫu nhiên
+E: Round robin chia đều số request nhưng không biết request nào đang chạy lâu; least connections gửi tới instance đang ít việc nhất. IP hash dùng cho sticky session/WebSocket.
+
+Q: Chiến lược deploy nào rollback dưới 1 phút, rủi ro thấp nhất nhưng tạm thời tốn gấp đôi tài nguyên?
++ Blue/Green
+- Rolling
+- Canary
+- Deploy tay qua SSH
+E: Rolling thay từng instance một (rollback chậm). Canary cho 5–10% user dùng bản mới trước (kiểm soát rủi ro tốt nhưng phức tạp). Blue/Green giữ 2 môi trường và chuyển traffic một lần.
+
+Q: Phát biểu nào về SLI / SLO / SLA là ĐÚNG?
++ SLO là mục tiêu nội bộ đặt chặt hơn SLA; phần chênh tạo ra error budget
+- SLA phải chặt hơn SLO
+- SLI là cam kết pháp lý với khách
+- SLO 99.9% cho phép downtime 87 giờ/năm
+E: SLI là số đo thực tế, SLO là mục tiêu nội bộ, SLA là cam kết pháp lý có đền bù. 99.9% tương đương khoảng 8.7 giờ downtime mỗi năm.
+
+Q: Vì sao agent cần phản hồi nhanh thường không hợp với serverless như AWS Lambda?
++ Cold start có thể mất 5–15 giây
+- Lambda không hỗ trợ Python
+- Lambda không có HTTPS
+- Lambda quá rẻ nên bị giới hạn
+E: Nền tảng chạy container (Railway/Render) thường hợp hơn. Bắt đầu ở Tier 1 (Railway/Render/Fly.io), chỉ lên ECS/Cloud Run/Kubernetes khi thật sự cần scale.
+
+@QUIZ DAY13
+Q: Monitoring khác observability ở điểm nào?
++ Monitoring trả lời câu hỏi định sẵn; observability phát đủ dữ liệu để hỏi những câu hỏi mới (unknown-unknowns)
+- Monitoring chỉ dành cho hệ AI
+- Observability chỉ là một dashboard đẹp
+- Hai khái niệm giống hệt nhau
+E: AI agent có nhiều unknown-unknowns (prompt mới, model drift, user sáng tạo) nên observability quan trọng hơn monitoring đơn thuần. Mục tiêu là giảm MTTD xuống mức phút.
+
+Q: Vì sao KHÔNG dùng `user_id` làm label cho metric?
++ Gây cardinality explosion — số time series bùng nổ, làm sập Prometheus hoặc bill khổng lồ
+- Vì user_id là kiểu số
+- Vì metric không hỗ trợ label
+- Vì user_id luôn để trống
+E: Label hợp lệ: model, env, feature, tier. Dữ liệu high-cardinality (user_id, request_id, email) nên đưa vào logs hoặc traces.
+
+Q: Ngoài 4 golden signals (Latency, Traffic, Errors, Saturation), AI agent cần thêm hai tín hiệu nào?
++ Cost và Quality
+- CPU và RAM
+- Uptime và Disk
+- Số token và độ dài prompt
+E: Agent có thể "up" (traffic, latency, error đều ổn) nhưng trả lời sai và đốt tiền — hai failure mode riêng của AI mà monitoring truyền thống bỏ qua.
+
+Q: Với giao diện streaming, nên tối ưu chỉ số nào trước?
++ TTFT (Time To First Token)
+- Tổng latency của request
+- Throughput của hệ thống
+- Tỉ lệ lấp đầy context
+E: User cảm nhận TTFT: TTFT 500ms cho cảm giác nhanh dù tổng 8s; TTFT 3s cho cảm giác lag dù tổng chỉ 4s.
+
+Q: Agent có P99 = 5s, mỗi user chat 10 lượt. Xác suất một user gặp ít nhất 1 lần chậm hơn 5s là bao nhiêu?
++ Khoảng 9.6%
+- 1%
+- 50%
+- 0.1%
+E: 1 − 0.99¹⁰ ≈ 9.6% → với 1.000 user/ngày có khoảng 96 người bức xúc. Vì vậy phải theo dõi tail latency (P99), không chỉ trung bình.
+
+Q: Mọi LLM call nên gắn tối thiểu 3 tag nào để trả lời câu "ai đang tốn tiền"?
++ user_id, feature, model
+- ip, browser, os
+- timestamp, level, message
+- prompt, response, temperature
+E: Thiếu một trong ba thì không phân bổ được chi phí theo người dùng, tính năng hay model khi CFO hỏi "$50k tháng này, ai tốn?".
+
+Q: Chiến lược sampling log nào hợp lý cho AI agent?
++ Giữ 100% ERROR/WARN, ~10% INFO, ~1% DEBUG, và 100% request chậm hoặc chi phí bất thường
+- Giữ 1% cho mọi loại log
+- Bật DEBUG thường trực ở production
+- Bỏ log lỗi để tiết kiệm
+E: Sampling giảm chi phí 10–100 lần nhưng giữ 100% error là bắt buộc. Tail sampling (quyết định sau khi trace xong) giữ được mọi lỗi dù đắt hơn head sampling.
+
+Q: Audit log khác app log ở điểm nào?
++ Audit log giữ 100%, append-only, lưu 2–7 năm và hạn chế truy cập
+- Audit log có thể sample như app log
+- Audit log tự xoá sau 30 ngày
+- Audit log chỉ dành cho developer debug
+E: Audit log ghi "who did what when" phục vụ compliance/forensics. Trộn vào app log thì khi điều tra sẽ thiếu dữ liệu → tách riêng từ ngày đầu (ví dụ S3 Object Lock).
+
+Q: Nguyên tắc "Page on symptoms, not causes" nghĩa là gì?
++ Chỉ báo động khi user thực sự bị ảnh hưởng (P95 vượt SLO, error rate cao), không vì CPU > 80%
+- Báo động trên mọi metric quan trọng
+- Chỉ báo động khi server sập hẳn
+- Không cần báo động, chỉ cần dashboard
+E: Cause cao nhưng user không bị ảnh hưởng → false positive, dần bị phớt lờ (alert fatigue). Cause alert chỉ là thông tin phụ để debug sau khi symptom alert đã fire.
+
+Q: Alert multi-window multi-burn-rate ở mức Page dùng cặp cửa sổ và burn rate nào?
++ Cửa sổ 5 phút + 1 giờ, burn rate 14.4×
+- Cửa sổ 1 ngày + 1 tuần, burn rate 1×
+- Cửa sổ 30 giây + 1 phút, burn rate 100×
+- Cửa sổ 6 giờ + 3 ngày, burn rate 0.5×
+E: Burn 14.4× nghĩa là nếu giữ mức lỗi này sẽ đốt hết error budget của tháng trong khoảng 2 ngày. Alert khi cả hai cửa sổ cùng vượt: cửa ngắn phản ứng nhanh, cửa dài lọc nhiễu.
+
+@QUIZ DAY22
+Q: Alignment khác SFT ở điểm nào?
++ SFT dạy "nói gì" (format, làm theo lệnh); alignment dạy phân biệt tốt/xấu bằng preference data, không dạy thêm kiến thức
+- Alignment dạy kiến thức mới cho model
+- SFT dùng cặp chosen/rejected
+- Alignment thay thế hoàn toàn pre-training
+E: Preference learning học margin giữa câu tốt và câu xấu, biết cả điều KHÔNG nên nói. "Alignment beats scale": InstructGPT 1.3B + RLHF thắng GPT-3 175B.
+
+Q: Vì sao RLHF (PPO) được xem là baseline đắt đỏ?
++ Phải train SFT, Reward Model và PPO; PPO không ổn định và dễ reward hacking
+- Vì RLHF không cần dữ liệu
+- Vì RLHF chỉ chạy được trên CPU
+- Vì RLHF bỏ được reference model
+E: Ví von: thuê giám khảo chấm điểm rồi dùng điểm đó dạy lại model nên tốn gấp đôi. Thực tế chỉ frontier lab mới đủ tài nguyên.
+
+Q: Key insight của DPO là gì?
++ Policy tối ưu của KL-regularized RL có dạng đóng nên bỏ được reward model, train trực tiếp trên cặp chosen/rejected
+- Dùng thêm một reward model lớn hơn
+- Bỏ hẳn reference model
+- Train bằng unit test tự động
+E: Loss DPO thực chất là binary cross-entropy trên log-ratio của chosen so với rejected; chỉ cần forward qua π_θ và π_ref, không rollout, không PPO clipping.
+
+Q: Trên log TRL, dấu hiệu nào cho thấy likelihood displacement?
++ `rewards/chosen` giảm dần
+- `rewards/margins` tăng đều
+- `rewards/rejected` giảm
+- Loss giảm ổn định
+E: Xác suất của câu chosen cũng bị kéo xuống khi chosen ≈ rejected. Khắc phục: lọc bỏ cặp có gap quá nhỏ, dùng SimPO/IPO, dừng sớm khi `rewards/chosen` đảo chiều.
+
+Q: Model sau DPO quá conservative, bám sát reference. Nên chỉnh β thế nào?
++ Giảm β (ví dụ từ 0.1 xuống 0.05)
+- Tăng β lên 0.2
+- Đặt β = 0
+- β không ảnh hưởng gì
+E: β cao giữ model gần reference, β thấp cho model tự do hơn. Bắt đầu với 0.1; quá conservative → 0.05; model "quên" kiến thức → tăng lên 0.2.
+
+Q: Chỉ có dữ liệu thumbs-up/down (nhãn +1/−1) từ production, không có cặp so sánh. Nên dùng method nào?
++ KTO
+- DPO
+- ORPO
+- GRPO
+E: Quick rules: có SFT + cặp → DPO; chưa có SFT → ORPO; chỉ có nhãn +1/−1 → KTO (loss dựa trên prospect theory); bài toán math/code → GRPO + RLVR.
+
+Q: ORPO có đặc điểm gì?
++ Gộp SFT loss và preference loss vào một objective, đi thẳng từ base lên aligned, không cần reference model
+- Cần 3 model như RLHF
+- Chỉ dùng cho bài toán math
+- Bắt buộc có reward model riêng
+E: ORPO giảm khoảng 50% VRAM và bỏ được SFT stage; đổi lại nó kém mature hơn DPO.
+
+Q: GRPO thay value/critic model của PPO bằng gì?
++ Reward trung bình của một nhóm G samples cho cùng prompt, dùng làm baseline
+- Một reward model mới lớn hơn
+- Đánh giá trực tiếp của con người
+- Chính reference model
+E: Advantage A_i = (r_i − r̄) / std(r); bỏ value head tiết kiệm khoảng 50% memory. Đổi lại cần 8–64 rollouts mỗi prompt và tốn 3–4× thời gian so với DPO.
+
+Q: RLVR (RL from Verifiable Rewards) phù hợp với loại task nào?
++ Math, code, format — reward kiểm tra được bằng chương trình
+- Viết văn sáng tạo
+- Đánh giá giọng điệu thương hiệu
+- Mọi task mang tính chủ quan
+E: Reward do code kiểm tra (so đáp án, chạy unit test, regex/JSON schema) nên không có judge để model hack. RLVR bổ sung, không thay thế preference learning cho task chủ quan.
+
+Q: Recipe Tulu 3 — stack chuẩn 2024–2025 — là gì?
++ SFT → DPO → RLVR
+- Pre-train → RLHF → SFT
+- DPO → SFT → Pre-train
+- RLVR → SFT
+E: Mọi stack hiện đại đều iterative (Llama 3 lặp 6 vòng). So với checkpoint DPO, RLVR của Tulu 3 thêm +1.7 MATH, +3.3 GSM8K, +1.3 IFEval.
+
+@QUIZ DAY25
+Q: Lỗi nào KHÔNG nên retry?
++ 401 Unauthorized
+- 429 kèm header retry-after
+- 503 Service Unavailable
+- Timeout
+E: Chỉ retry lỗi transient: 408, 429, 5xx, 529, timeout. 400/401/403/422 là lỗi phía mình, retry chỉ lặp lại lỗi. 429 do hết credit cũng không retry mà phải alert ngay.
+
+Q: App retry 3 lần, gateway retry 3 lần, SDK retry 3 lần. Một lượt user có thể tạo tối đa bao nhiêu request lên provider đang lỗi?
++ 36
+- 9
+- 3
+- 12
+E: Retry amplification nhân theo tầng: (3+1) × 3 × 3 = 36 → chỉ retry ở một tầng duy nhất, có jitter và retry budget (< 10% request).
+
+Q: Exponential backoff cần thêm jitter để làm gì?
++ Tránh thundering herd — mọi client cùng retry đồng loạt tại một thời điểm
+- Tăng tốc độ retry
+- Giảm số lần retry về 0
+- Mã hoá request
+E: Full jitter: delay = random(0, min(cap, base·2^i)); nếu provider trả retry-after thì ưu tiên giá trị đó. Case Google Cloud 12/06/2025 hồi phục chậm vì thiếu randomized backoff.
+
+Q: Circuit breaker ở trạng thái OPEN làm gì?
++ Fail fast — từ chối ngay và chuyển sang fallback, không dồn tải vào dependency đang hỏng
+- Cho mọi request đi qua và đếm lỗi
+- Cho 1–3 probe đi qua để thử
+- Tắt toàn bộ hệ thống
+E: CLOSED: request đi qua, đếm lỗi. OPEN: fail fast. HALF-OPEN: cho vài probe, thành công nhiều lần liên tiếp mới đóng lại.
+
+Q: Loại lỗi nào NÊN được tính vào circuit breaker?
++ Call chậm vượt latency SLO (slow call)
+- 400 Bad Request do bug deploy
+- 429 kèm retry-after
+- Output sai schema
+E: Tính: timeout, connection error, 5xx, 529, slow call. Không tính: 400/401/403/422 (lỗi của mình), 429 (cooldown theo retry-after), lỗi schema/content filter (validation riêng).
+
+Q: 8 instance, mỗi instance giữ circuit breaker in-memory. Vấn đề là gì?
++ Mỗi instance mở riêng, cần khoảng 40 lỗi mới mở hết, state không nhất quán → dùng Redis hoặc đặt breaker ở gateway
+- Breaker sẽ không bao giờ mở
+- Các instance tự đồng bộ trạng thái với nhau
+- Không có vấn đề gì
+E: Breaker phân tán cần shared state. Ngoài ra nên isolation: một breaker cho mỗi provider × model (× region) để A sập không kéo B.
+
+Q: Bậc 0 của fallback ladder là gì?
++ Cùng model nhưng khác region/tier/deployment — không cần eval lại
+- Chuyển sang model nhỏ, rẻ hơn
+- Trả cached response
+- Thông báo tĩnh và chuyển người
+E: Thứ tự: bậc 0 cùng model khác region → bậc 1 model tương đương provider khác → bậc 2 model nhỏ → bậc 3 cache → bậc 4 thông báo + chuyển người. Mọi fallback model phải qua compatibility check.
+
+Q: `cached_tokens` luôn bằng 0 dù đã bật prompt caching. Nguyên nhân khả dĩ nhất là gì?
++ Timestamp/UUID được chèn ở đầu prompt làm prefix thay đổi mỗi lần
+- Prompt quá ngắn nên được cache gấp đôi
+- Provider không tính phí cache
+- Model quá lớn để cache
+E: Prompt cache khớp prefix chính xác → đặt phần tĩnh (instructions, tool definitions, tài liệu) lên trước, phần động (thời gian, input của user) xuống cuối.
+
+Q: Cấu hình semantic cache `distance_threshold=0.9` có vấn đề gì?
++ Distance 0.9 ≈ similarity 0.1 → cache quá dễ dãi, false hit tràn lan
+- Quá chặt, gần như không bao giờ hit
+- Không ảnh hưởng gì
+- Chỉ làm cache chậm hơn
+E: Similarity cao = chặt, distance thấp = chặt; nhầm chiều là trả nhầm câu trả lời. Phải đo cả hit rate lẫn false-hit rate và scope cache theo tenant/model/prompt version.
+
+Q: SLO 99.5% trong 30 ngày. Error budget tương đương bao nhiêu?
++ 0.5% ≈ 3.6 giờ mỗi 30 ngày
+- 5% ≈ 36 giờ
+- 0.05% ≈ 21 phút
+- 1% ≈ 7.2 giờ
+E: Error budget = 1 − SLO. Burn rate = error rate / (1 − SLO); alert theo burn rate (14.4 → page) và khi hết budget thì đóng băng release.

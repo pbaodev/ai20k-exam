@@ -1,0 +1,501 @@
+@EXAM EXAM1
+@LABEL Đề 1
+@TITLE Tổng hợp Phase 1 — Foundation
+@SCOPE Phase 1
+@DESC Day 1–14: LLM, bài toán AI, agent, prompt & tool, product, data, RAG, multi-agent, guardrails, deploy, monitoring, evaluation.
+
+# ---------- 35 câu một đáp án ----------
+Q: Vì sao LLM có thể trả lời rất tự tin nhưng vẫn sai?
++ Vì model tối ưu xác suất của token tiếp theo, không kiểm tra tính đúng–sai của nội dung
+- Vì temperature mặc định luôn bằng 0
+- Vì context window quá lớn khiến model bị nhiễu
+- Vì tokenizer làm mất dấu tiếng Việt
+E: LLM là cỗ máy next-token prediction: nó chọn chuỗi có xác suất cao, không phải chuỗi đúng sự thật. Đây là gốc của hallucination, và là lý do sau này cần RAG, tools, grounding.
+
+Q: Với tác vụ sinh code hoặc phân tích cần kết quả ổn định, nên đặt temperature thế nào?
++ Thấp, gần 0 — kết quả gần như deterministic
+- Gần 1 để model sáng tạo hơn
+- Trên 1.5 để tăng độ đa dạng
+- Không quan trọng, temperature chỉ ảnh hưởng tốc độ
+E: Temperature 0 cho output ổn định, hợp code và phân tích; chỉ tăng temperature (hoặc top_p) khi thật sự cần đa dạng như viết sáng tạo.
+
+Q: "Rule of thumb" khi chọn model cho một use case là gì?
++ Bắt đầu từ model đủ tốt và đủ rẻ, chỉ nâng cấp khi chất lượng thật sự chặn use case
+- Luôn chọn model mạnh nhất để tránh rủi ro
+- Chọn model có context window lớn nhất
+- Chọn model mới ra mắt gần nhất
+E: Chọn model là cân bằng quality–latency–cost. FAQ, phân loại, batch lớn → model nhỏ (Haiku, Flash); reasoning nhiều bước, code khó → model lớn.
+
+Q: Ở gate "Baseline" trong AI Product Lifecycle, khi nào là No-Go?
++ Khi không biết AI cần tốt hơn cái gì — chưa có heuristic hoặc human baseline để so sánh
+- Khi chưa chọn được model
+- Khi chưa có giao diện người dùng
+- Khi chưa có ngân sách marketing
+E: Không có baseline thì không chứng minh được lợi ích của AI. Bốn bài học: không metric → không gate; không baseline → không chứng minh; không eval → chỉ là demo; không rollback → deploy là đánh bạc.
+
+Q: Trong Problem Statement của ví dụ CS ngân hàng, câu "hệ thống chỉ đề xuất + trích dẫn, CS xác nhận trước khi gửi" thuộc thành phần nào?
++ Operational Boundary
+- Success Metric
+- Bottleneck
+- Current Workflow
+E: Operational Boundary vạch rõ hệ thống được làm gì và không được làm gì. Problem Statement tốt suy ra được eval plan, boundary và ownership.
+
+Q: Theo RACI-lite trong bài, AI Engineer là người chịu trách nhiệm (A/R) cho việc gì?
++ Baseline, eval và architecture
+- Định nghĩa problem và quyết định go-live
+- Phê duyệt ngân sách
+- Ký hợp đồng với khách hàng
+E: Business/Ops là A cho việc define problem, HITL và go-live; AI Engineer là A/R cho baseline, eval và kiến trúc kỹ thuật.
+
+Q: Theo các pattern của Anthropic, nấc đơn giản nhất nên thử trước khi nghĩ đến agent là gì?
++ Augmented LLM (LLM có retrieval/tool/memory, một lượt gọi)
+- Orchestrator–worker
+- Autonomous agent dài hạn
+- Multi-agent debate
+E: Thang tăng dần: Augmented LLM → Prompt chaining → Routing → Orchestrator–worker → Agent. Chỉ leo lên khi nấc dưới không đủ.
+
+Q: Trong agent loop tối thiểu, cơ chế nào bảo đảm agent không chạy mãi?
++ Giới hạn MAX_ITERATIONS kèm timeout từng tool và ngân sách token
+- Tăng temperature sau mỗi vòng
+- Xoá lịch sử tin nhắn sau mỗi vòng
+- Cho model tự quyết định khi nào dừng mà không cần giới hạn
+E: Safeguards: max iterations, timeout mỗi tool, budget token/cost, retry có kiểm soát và fallback sang người/chatbot. Hết vòng thì trả "Stopped: max iterations reached".
+
+Q: Với dữ liệu biến động như giá vé hay thời tiết, agent nên xử lý thế nào khi thiếu thông tin?
++ Tra nguồn bằng tool, không hỏi user và không đoán
+- Hỏi user cung cấp giá vé hiện tại
+- Dùng kiến thức sẵn có trong model
+- Trả lời theo giá trung bình năm ngoái
+E: Ask-if-missing chỉ hỏi dữ kiện blocking mà user biết (ngày đi, điểm xuất phát). Dữ liệu biến động (giá, thời tiết, chính sách) thì phải tra nguồn.
+
+Q: Rủi ro chính khi dùng few-shot prompting là gì?
++ Order bias (bị ảnh hưởng mạnh bởi ví dụ cuối) và tốn thêm token
+- Model không còn hiểu instruction
+- Bắt buộc phải fine-tune lại model
+- Không dùng được với tiếng Việt
+E: Chọn 2–5 ví dụ tốt, ưu tiên edge case (thiếu dữ liệu, mơ hồ, jailbreak). Giảm chi phí bằng prompt caching hoặc retrieve ví dụ động.
+
+Q: Chuỗi thẩm quyền đúng khi các nguồn chỉ dẫn mâu thuẫn nhau là gì?
++ System/Developer > Tool policy > User; nội dung web hay tool result không có thẩm quyền ra lệnh
+- User > System > Tool result
+- Tool result > System > User
+- Mọi nguồn có thẩm quyền ngang nhau
+E: Nội dung bên ngoài chỉ là dữ liệu. Nếu model làm theo lệnh nằm trong tool result hay trang web, đó chính là prompt injection.
+
+Q: Rule of thumb về số tool nên mở cho model trong một lượt là bao nhiêu?
++ Dưới 20 tool, lọc từ global registry → toolset theo agent → tool thấy trong lượt
+- Càng nhiều càng tốt để model linh hoạt
+- Đúng 1 tool mỗi lượt
+- Tối thiểu 50 tool để đủ khả năng
+E: Mở ít tool, mở đúng tool: nhiều tool làm model chọn sai và tốn token schema. Mỗi tool nên ≤ 5–7 tham số, tách theo Single Responsibility.
+
+Q: Agent đạt accuracy 95% trên eval nhưng tỉ lệ dùng lại thấp. Theo hệ metric 3 tầng, vấn đề nằm ở đâu?
++ Ở workflow fit hoặc trust — AI metric tốt chưa kéo được product metric
+- Ở model, cần đổi model mạnh hơn
+- Ở hạ tầng cloud
+- Ở eval set quá khó
+E: Đọc từ dưới lên: AI metric → product metric → business KPI. Accuracy cao mà repeat usage thấp là vấn đề phù hợp quy trình/niềm tin, không phải chất lượng model.
+
+Q: Requirement nào thuộc nhóm AI-specific?
++ Hallucination rate dưới 2% trên eval set 200 câu, mọi câu trả lời phải có citation
+- Hệ thống trả lời trong 5 giây ở p95
+- Uptime 99.5% mỗi tháng
+- Tóm tắt ticket hỗ trợ khách hàng
+E: Ba nhóm: Functional (AI làm gì — tóm tắt ticket), Non-functional (latency, uptime, cost), AI-specific (hallucination threshold, explainability, fallback).
+
+Q: Theo mô hình Inaction / Ask / Act (Horvitz), trạng thái nào "thông minh nhất nhưng hay bị quên nhất"?
++ Ask — hỏi lại khi có tín hiệu nhưng còn mơ hồ
+- Inaction — không làm gì
+- Act — tự làm ngay
+- Escalate — chuyển cho quản lý
+E: Không làm khi chưa chắc user muốn gì và sai rất đắt; hỏi khi có tín hiệu nhưng mơ hồ; tự làm khi đủ chắc và sai vẫn dễ undo.
+
+Q: Giai đoạn eval Production (online monitoring) tạo ra đầu ra gì?
++ Cảnh báo drift theo % pass hằng tuần, và trace thật được đưa ngược vào test set offline
+- Bộ tiêu chí rubric đầu tiên
+- Quality gate trước khi rollout
+- Bản PRD đầu tiên
+E: Ba giai đoạn: Prototype (vibe check → rubric) → Build (offline eval → quality gate ≥ 90%) → Production (online monitoring → drift alert, trace nuôi lại test set).
+
+Q: Khi ước lượng story point cho task "prompt tuning", sai lầm thường gặp là gì?
++ Coi là task nhỏ cố định, không chừa buffer cho nhiều vòng iteration và eval
+- Thêm buffer cho iteration
+- Dành một sprint để test với user thật
+- Tính cả công viết eval
+E: Prompt tuning là chu trình thử–đo–sửa nhiều vòng. Tương tự, tool integration hay quên error handling/retries; data/retrieval hay quên cleaning và edge cases.
+
+Q: Vai trò đúng của Dify, LangFlow, Assistants API trong dự án AI là gì?
++ Dựng PoC/demo nhanh để test workflow fit, không thay thế discovery, PRD hay kiến trúc production
+- Thay thế hoàn toàn đội kỹ sư
+- Là kiến trúc production chuẩn cho mọi hệ thống
+- Chỉ dùng để viết tài liệu
+E: Low-code/no-code giúp minh hoạ nhanh, nhưng không thay product discovery, PRD, risk register hay production architecture.
+
+Q: Vì sao Markdown là định dạng đầu ra mặc định khi xử lý tài liệu cho RAG?
++ Tiết kiệm khoảng 30–50% token so với HTML mà vẫn giữ heading, list, table
+- Vì Markdown được mã hoá an toàn hơn
+- Vì vector DB chỉ nhận Markdown
+- Vì Markdown không cần chunking
+E: Markdown không có closing tag hay attribute, và LLM được train trên rất nhiều Markdown nên hiểu tự nhiên. HTML (clean) chỉ dùng khi Markdown làm mất cấu trúc bảng phức tạp.
+
+Q: Bước Input Control của ingestion nên xác định loại file thế nào?
++ Kiểm tra magic bytes / MIME thật, không tin phần mở rộng file
+- Dựa vào phần mở rộng .pdf, .docx
+- Hỏi người upload loại file
+- Thử tất cả extractor rồi chọn kết quả dài nhất
+E: File `.pdf` có thể là ảnh scan, `.txt` có thể là JSON. Detect MIME → chọn extractor; không có extractor phù hợp thì bỏ qua và ghi log — đừng index rác.
+
+Q: Khi nào vector-less retrieval (BM25, SQL, agentic grep, duyệt mục lục) là lựa chọn tốt?
++ Corpus nhỏ hoặc có cấu trúc rõ, cần chính xác tuyệt đối, tài liệu dài có mục lục tốt
+- Khi cần tìm theo đồng nghĩa đa ngôn ngữ
+- Khi có hàng tỉ tài liệu không cấu trúc
+- Khi muốn giảm số token mỗi query xuống thấp nhất
+E: Vector-less tránh được chi phí vận hành vector DB và mạnh với exact match. Đổi lại agentic search chậm hơn và tốn token hơn cho mỗi query.
+
+Q: Vì sao pre-filtering metadata an toàn hơn post-filtering trong RAG?
++ Lọc quyền/danh mục trước rồi mới search nên kết quả không bao giờ chứa tài liệu ngoài phạm vi
+- Vì post-filtering không dùng được metadata
+- Vì pre-filtering không cần embedding
+- Vì post-filtering làm tăng độ chính xác quá mức
+E: Post-filtering lấy top-k rồi mới lọc nên có thể mất hết kết quả hợp lệ hoặc lỡ để lọt tài liệu không được phép. Metadata (source, date, access) là bắt buộc.
+
+Q: Với corpus code, log hoặc văn bản luật, nên đặt alpha của hybrid search thế nào (α=1 thuần vector, α=0 thuần BM25)?
++ Khoảng 0.2–0.4, nghiêng về BM25
+- Khoảng 0.7–0.9, nghiêng về vector
+- Đúng 1.0
+- Alpha không ảnh hưởng kết quả
+E: FAQ chatbot hỏi kiểu tự nhiên → α ≈ 0.7–0.9. Code/log/luật nhiều mã, số hiệu, thuật ngữ chính xác → α ≈ 0.2–0.4.
+
+Q: Kỹ thuật "document reordering" chống Lost in the Middle sắp xếp chunk thế nào?
++ Chunk tốt nhất ở đầu, tốt thứ hai ở cuối, chunk kém hơn ở giữa
+- Sắp theo thời gian tạo tài liệu
+- Chunk tốt nhất ở giữa để model tập trung
+- Đảo ngẫu nhiên thứ tự mỗi lần
+E: Model nhớ đầu và cuối tốt hơn phần giữa, nên thứ tự kiểu [1, 3, 5, 4, 2] đặt thông tin quan trọng nhất ở hai đầu.
+
+Q: Vì sao để cùng một model "tự phê bình" bài của chính nó thường không cải thiện kết quả?
++ Không có thông tin mới — chỉ hiệu quả khi đối chiếu sự thật bên ngoài (test, tra cứu, model khác), nên verifier nên là vai riêng
+- Vì model không đọc được output của chính nó
+- Vì tự phê bình làm tăng temperature
+- Vì tự phê bình luôn tốn gấp 10 lần token
+E: Theo MAST, thêm vai verifier trước khi kết thúc tăng tỉ lệ thành công khoảng 15.6%.
+
+Q: Worker trả về `None` khiến supervisor tưởng đã thành công. Cách phòng đúng là gì?
++ Dùng envelope có cấu trúc gồm `status`, `data`, `error` cho mọi kết quả worker
+- Bỏ qua kết quả rỗng
+- Tăng timeout của worker
+- Cho supervisor tự đoán kết quả
+E: Envelope rõ ràng giúp phân biệt thành công, thất bại và thiếu dữ liệu — tránh anti-pattern No Fallback và lỗi ngữ nghĩa im lặng.
+
+Q: Data contract theo chuẩn ODCS gồm những thành phần nào?
++ Schema, Semantics, SLA, Ownership
+- Prompt, Model, Tool, Memory
+- Bronze, Silver, Gold, Platinum
+- Freshness, Volume, Lineage, Cost
+E: "Contract là vấn đề con người mặc áo YAML" — phải có người enforce. Airbnb đi theo lộ trình mandate → tooling → incentive (DQ Score).
+
+Q: Freshness SLI vẫn đạt nhưng agent trả lời sai vì bảng nguồn rỗng. Bài học là gì?
++ Freshness chỉ đo dữ liệu đến đúng giờ, không đo dữ liệu đúng hay đủ ("on time but empty")
+- Freshness SLI đã đo sai giờ
+- Phải tắt freshness monitoring
+- Cần đổi sang streaming
+E: Cần kết hợp 5 pillars: Freshness, Quality, Volume, Schema, Lineage — volume sẽ bắt được bảng rỗng mà freshness không thấy.
+
+Q: Khi phát hiện bất thường trong số liệu, vì sao MAD tốt hơn Z-score?
++ MAD robust hơn với outlier; Z-score bị chính outlier làm lệch mean/std (masking)
+- MAD nhanh hơn 100 lần
+- Z-score không áp dụng được cho số nguyên
+- MAD không cần dữ liệu lịch sử
+E: Có thể dùng STL để tách trend/seasonal/residual. Điểm yếu chung của các detector thống kê là cold-start khi chưa đủ lịch sử.
+
+Q: Nguyên tắc red teaming trong quy trình release là gì?
++ Safety test chạy ở mỗi release; fail thì không deploy
+- Chỉ red team một lần trước khi ra mắt
+- Red team chỉ cần cho model lớn
+- Để user báo lỗi bảo mật sau khi ra mắt
+E: Tự tấn công agent của mình → ghi pass/fail → fix → test lại. Mục tiêu không phải an toàn tuyệt đối mà là biết lỗ hổng ở đâu.
+
+Q: Health check kiểu readiness (`/ready`) fail thì hệ thống làm gì?
++ Bỏ instance khỏi load balancer cho tới khi sẵn sàng
+- Restart container ngay lập tức
+- Xoá database
+- Tăng số replica lên gấp đôi
+E: Liveness `/health` fail → restart; readiness `/ready` fail → ngừng nhận traffic; startup probe dành cho app khởi động chậm.
+
+Q: Pattern Bulkhead giải quyết vấn đề gì?
++ Tách pool tài nguyên riêng cho từng loại phụ thuộc, để AI chậm không kéo DB hay API khác chậm theo
+- Tự động retry với backoff
+- Chia traffic cho bản canary
+- Mã hoá dữ liệu khi lưu
+E: Ví dụ pool AI 20, DB 10, API ngoài 5. Bulkhead đi cùng timeout, retry + backoff, circuit breaker và idempotency.
+
+Q: Chỉ số PSI (Population Stability Index) vượt ngưỡng nào thì được xem là drift đáng kể?
++ Lớn hơn 0.25
+- Nhỏ hơn 0.1
+- Khoảng 0.1–0.25
+- Đúng 1.0
+E: PSI < 0.1 ổn định; 0.1–0.25 drift nhẹ; > 0.25 drift đáng kể, cần điều tra/retrain. Ba loại drift: data, concept, model.
+
+Q: Sau vibe check, những output "fail lặp lại" và "pass tốt nhất" được dùng vào đâu?
++ Fail lặp lại để viết PRD; pass tốt nhất làm golden outputs (tách pool few-shot và pool eval)
+- Cả hai đều bỏ đi
+- Fail để train model, pass để quảng cáo
+- Cả hai đưa vào few-shot prompt
+E: "Demo before memo": chạy prototype trên 10–30 input thật, label và ghi pattern trước khi viết tài liệu.
+
+Q: Bộ test 50 case không có lỗi nào. Kết luận đúng là gì?
++ Tỉ lệ lỗi thật vẫn có thể lên tới khoảng 5.8% — 50 case chỉ là "cái cân" thô
+- Hệ thống chắc chắn không có lỗi
+- Tỉ lệ lỗi thật chắc chắn dưới 0.1%
+- Cần bỏ bớt test cho nhanh
+E: Bộ test là cái cân: 50 case chỉ phân biệt được chênh lệch cỡ 20 điểm, 500 case khoảng 7 điểm. Ngưỡng ship phải chốt trước.
+
+# ---------- 15 câu nhiều đáp án ----------
+Q: Chọn TẤT CẢ các giới hạn bẩm sinh của LLM được nêu trong bài.
++ Knowledge cutoff — không biết sự kiện sau thời điểm training
++ Hallucination — trả lời tự tin nhưng sai
++ Context window hữu hạn — chỉ nhìn được một lượng token mỗi lần gọi
+- Không thể sinh code
+- Không xử lý được tiếng Việt
+E: Ba giới hạn này giải thích vì sao cần prompt tốt, context management, RAG và tools. LLM vẫn sinh code và xử lý tiếng Việt được (dù tốn token hơn).
+
+Q: Chọn TẤT CẢ các anti-pattern khi khởi động dự án AI.
++ Trend-first — làm agent vì đang là xu hướng
++ No eval path — không có cách đánh giá chất lượng
++ No owner of failure — không ai chịu trách nhiệm khi AI sai
+- Đo baseline thủ công trước khi build
+- Đặt gate GO/NO-GO ở mỗi giai đoạn
+E: Bốn anti-pattern: Trend-first, No baseline, No eval path, No owner of failure. Đo baseline và đặt gate là thực hành đúng.
+
+Q: Chọn TẤT CẢ các tiêu chí thuộc Agentic Fit Framework.
++ Multi-step reasoning
++ Dynamic decision — bước sau phụ thuộc kết quả vừa quan sát
++ Long horizon — giữ mục tiêu qua nhiều vòng
+- Số lượng người dùng lớn
+- Model có nhiều tham số
+E: Bốn tiêu chí: multi-step reasoning, tool interaction, dynamic decision, long horizon. Tổng điểm từ 11 trở lên mới đáng thử agent.
+
+Q: Chọn TẤT CẢ các thành phần bắt buộc của một system prompt production-grade.
++ Persona
++ Core directives dạng MUST / NEVER / ALWAYS
++ Output contract
+- Toàn bộ lịch sử hội thoại của mọi user
+- Khẩu hiệu chung chung như "hãy thông minh"
+E: Bốn thành phần: Persona, Core Directives, Capabilities (tool nào, khi nào, fallback), Output Contract. Khẩu hiệu mơ hồ là anti-pattern.
+
+Q: Chọn TẤT CẢ các thao tác context engineering theo Lance Martin.
++ Write — ghi thông tin ra ngoài context
++ Compress — nén/tóm tắt
++ Isolate — tách context cho sub-agent
+- Encrypt — mã hoá context
+- Duplicate — nhân bản context để dự phòng
+E: Bốn thao tác: Write, Select, Compress, Isolate. Compaction là lossy nên phải giữ các cập nhật mới nhất.
+
+Q: Chọn TẤT CẢ các anti-pattern trong PRD cho AI.
++ Metric "càng cao càng tốt" không có baseline/threshold
++ Không có risk section
++ Viết solution (chọn model) trước khi chứng minh user value
+- Có acceptance criteria đo được
+- Có non-functional requirements về latency và cost
+E: Anti-pattern còn lại: chỉ mô tả tính năng mà thiếu problem/target user, thiếu non-functional. PRD là contract, phải giảm mơ hồ.
+
+Q: Chọn TẤT CẢ những việc bắt buộc trong "graceful handoff" khi AI không chắc chắn.
++ Nói rõ giới hạn thay vì im lặng hoặc tự tin giả
++ Thu phản hồi ngay tại chỗ
++ Trả quyền kiểm soát cho người, không mất dữ liệu
+- Ẩn lỗi để giữ trải nghiệm mượt mà
+- Hiển thị mã lỗi kỹ thuật chi tiết cho user
+E: Thông báo lỗi tốt không đổ lỗi user, không dùng mã lỗi và giả định có lạm dụng. "Cỗ máy khiêm tốn" được tha thứ nhiều hơn.
+
+Q: Chọn TẤT CẢ các thành phần của PoC Canvas.
++ Key hypothesis
++ Success criteria chốt trước khi làm
++ Timebox 2–4 tuần và next decision khi đạt/không đạt
+- Cam kết production-ready ngay sau PoC
+- Bao trọn toàn bộ scope sản phẩm
+E: PoC có scope hẹp (1 workflow, 1 nhóm user, 1 bộ data), giảm bất định chính và không hứa production readiness.
+
+Q: Chọn TẤT CẢ các trường metadata hữu ích nên gắn cho mỗi chunk.
++ Source / tên file để truy vết và citation
++ Access level để giới hạn quyền
++ Thời gian cập nhật để tránh nội dung cũ
+- Bản sao toàn bộ vector của tài liệu khác
+- Mật khẩu của người tạo tài liệu
+E: Metadata quan trọng ngang similarity: source, category, time/freshness, access level, section/chunk id.
+
+Q: Chọn TẤT CẢ các kỹ thuật query transformation.
++ HyDE — sinh câu trả lời giả định để tìm tài liệu
++ Decomposition — tách câu hỏi multi-hop
++ Step-back — sinh câu hỏi tổng quát hơn
+- RRF — gộp kết quả theo thứ hạng
+- MMR — chọn kết quả đa dạng
+E: Query transformation chạy trước vector DB (thường bằng LLM nhỏ). RRF là kỹ thuật fusion, MMR là kỹ thuật chọn/rerank kết quả.
+
+Q: Chọn TẤT CẢ các dấu hiệu cho thấy nên dùng multi-agent.
++ Có nhiều vai trò khác nhau
++ Việc chia song song được (đọc độc lập)
++ Một context window không đủ chứa
+- Vì kiến trúc multi-agent trông "ngầu" hơn
+- Logic 10 bước phụ thuộc chặt chẽ vào nhau
+E: Multi-agent là đánh đổi: nhiều LLM call, nhiều token, lỗi cộng dồn. Logic tuần tự chặt hay cùng ghi một sản phẩm thì giữ single-agent.
+
+Q: Chọn TẤT CẢ các pillar của data observability (theo Monte Carlo).
++ Freshness
++ Volume
++ Lineage
+- Latency của LLM
+- Độ dài prompt
+E: Năm pillar: Freshness, Quality, Volume, Schema, Lineage. Thời đại agent bổ sung embedding coverage, index version consistency, retrieval staleness.
+
+Q: Chọn TẤT CẢ các kỹ thuật jailbreak được nêu trong bài.
++ Roleplay — "You are DAN, DAN has no rules"
++ Encoding — mã hoá lệnh bằng Base64
++ Multi-turn — hỏi từng câu vô hại rồi ghép lại
+- Rate limiting
+- Spotlighting
+E: Rate limiting và spotlighting là biện pháp phòng thủ, không phải kỹ thuật tấn công. Thêm một kiểu jailbreak nữa là đổi sang ngôn ngữ ít phổ biến.
+
+Q: Chọn TẤT CẢ các quy tắc viết Dockerfile đúng.
++ Multi-stage build
++ Chạy bằng non-root user
++ Pin version image, ví dụ `python:3.11.9-slim`
+- Dùng tag `latest` để luôn mới nhất
+- Copy file `.env` vào image cho tiện
+E: Bảy quy tắc: multi-stage, copy deps trước, `.dockerignore` (loại `.env`, `.git`), non-root, pin version, `HEALTHCHECK`, `CMD` dạng JSON array.
+
+Q: Chọn TẤT CẢ các pattern tối ưu chi phí LLM được nêu trong bài.
++ Prompt caching cho system prompt và tài liệu tĩnh
++ Model routing — câu dễ sang model nhỏ
++ Batch API cho việc không cần realtime
+- Log toàn bộ prompt và response
+- Tăng max_tokens cho mọi request
+E: Áp dụng cả 4 pattern (thêm semantic cache) có thể giảm từ $96k xuống $22k/tháng (~77%). Đây là FinOps for AI.
+
+# ---------- 10 câu tự luận ----------
+ESSAY: So sánh ba mức giải pháp Rule/Script → LLM Feature → Agent. Khi nào chọn mỗi mức? Cho một ví dụ cụ thể cho từng mức.
+K: Rule/Script: input ổn định, logic rõ, compliance nặng (ví dụ kiểm tra định dạng CCCD)
+K: LLM Feature: input biến thể vừa, output linh hoạt, người review được (ví dụ tóm tắt email)
+K: Agent: nhiều bước, nhiều tool, state thay đổi, quyết định động, có risk control (ví dụ xử lý khiếu nại cần tra nhiều hệ thống)
+K: Bắt đầu từ mức đơn giản, chỉ sang phải khi giá trị tăng hơn độ phức tạp
+K: Nhắc đến Agentic Fit / AI Readiness hoặc baseline để ra quyết định
+M: Ba mức là một thang tăng dần về độ linh hoạt lẫn chi phí và rủi ro.
+M: - **Rule/Script:** dùng khi input ổn định, logic rõ, cần deterministic hoặc compliance nặng. Ví dụ: kiểm tra số CCCD đủ 12 chữ số, tính phí theo biểu phí cố định.
+M: - **LLM Feature:** một lượt gọi LLM (có thể kèm retrieval, structured output) khi input biến thể vừa phải, output cần linh hoạt và con người review được. Ví dụ: tóm tắt email khiếu nại, phân loại ticket.
+M: - **Agent:** khi bài toán cần nhiều bước, nhiều tool, bước sau phụ thuộc kết quả bước trước và có feedback loop. Ví dụ: xử lý khiếu nại hoàn tiền phải tra đơn hàng, chính sách, lịch sử khách rồi đề xuất phương án.
+M: Nguyên tắc: bắt đầu từ trái và chỉ sang phải khi giá trị tăng hơn độ phức tạp; dùng Agentic Fit (≥ 11 điểm mới thử agent) và AI Readiness Checklist, luôn so với baseline.
+
+ESSAY: Viết một Problem Statement đầy đủ cho bài toán: nhân viên CSKH ngân hàng mất nhiều thời gian tra cứu để trả lời câu hỏi về phí dịch vụ.
+K: Actor rõ (nhân viên CSKH, nhóm khách nào)
+K: Current workflow và bottleneck có số liệu (tra nhiều hệ thống, thời gian trung bình, % vượt SLA)
+K: Impact kinh doanh (SLA breach, chi phí/ticket, CSAT)
+K: Success metric đo được có ngưỡng và không làm tăng tỉ lệ sai
+K: Operational boundary (AI chỉ đề xuất + trích dẫn, người xác nhận trước khi gửi)
+M: Mẫu câu: Actor nào gặp bottleneck nào trong workflow nào, gây tổn thất gì, thành công đo bằng metric nào, trong giới hạn vận hành nào.
+M: - **Actor:** nhân viên CSKH tuyến 1 xử lý câu hỏi về phí thẻ và tài khoản.
+M: - **Current workflow:** mỗi ticket phải tra 4–5 hệ thống (biểu phí, lịch sử giao dịch, chính sách khuyến mãi); trung bình 8 phút/ticket.
+M: - **Bottleneck & impact:** 40% ticket vượt SLA 5 phút → khách phàn nàn, tăng chi phí nhân sự, CSAT giảm.
+M: - **Success metric:** 80% ticket thuộc top-5 intent về phí được xử lý dưới 2 phút, tỉ lệ trả lời sai không tăng so với baseline.
+M: - **Operational boundary:** hệ thống chỉ đề xuất câu trả lời kèm trích dẫn biểu phí; nhân viên xác nhận trước khi gửi; không tự động thay đổi phí hay hoàn tiền.
+M: Problem Statement tốt cho phép suy ra ngay eval plan, boundary và ownership.
+
+ESSAY: Thiết kế tool `book_flight` cho agent đặt vé: mô tả JSON schema tốt và cách xử lý lỗi, kiểm soát rủi ro khi gọi tool.
+K: Tên động từ + danh từ, description nói rõ khi nào dùng / không dùng
+K: Tham số có mô tả, định dạng (YYYY-MM-DD), enum cho giá trị cố định, required để model hỏi lại khi thiếu
+K: Xử lý lỗi: try/except, validate (Pydantic), gửi lỗi về cho LLM tự sửa, retry có giới hạn, không bịa kết quả
+K: Đây là write action → approval enforce ở tầng ứng dụng, logging, idempotency
+K: Tool result là dữ liệu, không phải lệnh (result processor)
+M: Schema: tên `book_flight`; description ghi rõ "chỉ dùng sau khi user đã xác nhận chuyến bay, giá và hành khách; không dùng để tra giá". Tham số: `flight_id` (string, required), `passenger_name` (string, required), `date` (string, format YYYY-MM-DD), `cabin` (enum: economy, business). Giữ ≤ 5–7 tham số; tra cứu tách sang tool `search_flights` riêng (Single Responsibility).
+M: Xử lý lỗi: bọc try/except, validate input bằng Pydantic; khi lỗi, gửi thông điệp lỗi rõ ràng về cho LLM để nó sửa tham số, retry tối đa 2–3 lần; tuyệt đối không bịa mã đặt chỗ.
+M: Kiểm soát rủi ro: đặt vé là write action (thanh toán) nằm cao trên risk ladder → bắt buộc approval ở tầng ứng dụng (không chỉ dặn trong prompt), có idempotency key để không đặt trùng, log đầy đủ. Kết quả trả về đi qua result processor (lọc trường, đánh dấu untrusted, gắn source/time).
+M: Eval: đo routing accuracy, argument accuracy, policy accuracy với các case positive, no-tool, thiếu tham số và injection.
+
+ESSAY: Một PRD viết "AI tóm tắt biên bản họp chính xác; đã test 3 file mẫu đều ổn". Hãy viết lại phần AI-specific cho đúng chuẩn AI PRD.
+K: Input/context: nói rõ AI được đọc gì (chỉ transcript)
+K: Output spec cụ thể (mỗi action một bullet, có assignee, giới hạn số mục, tone)
+K: Acceptance theo tỉ lệ trên tập đại diện (ví dụ ≥ 90% pass rubric trên 20 transcript)
+K: Test distribution gồm case lộn xộn, edge, ambiguous; lớn dần từ production trace
+K: Failure modes có thiết kế (confidence thấp, mâu thuẫn nguồn, thiếu dữ liệu → không bịa) + feedback/monitoring
+M: "3 file mẫu đều ổn" chỉ là demo, không phải product. Phần AI-specific cần:
+M: - **Input/context:** chỉ đọc transcript của cuộc họp đó, không đọc chat, calendar hay screen share.
+M: - **Output spec:** mỗi action item là một bullet, có assignee, tối đa 8 mục, tone chuyên nghiệp; có ví dụ output tốt cho case thường, case quan trọng và case hiếm.
+M: - **Acceptance:** ≥ 90% pass rubric trên 20 transcript đại diện (song ngữ Việt–Anh, họp lộn xộn, nhiều người nói chồng).
+M: - **Test distribution:** khoảng 20 case messy/edge/ambiguous, bổ sung dần từ production trace.
+M: - **Failure modes:** confidence thấp → bản tóm tắt ngắn kèm cảnh báo; nguồn mâu thuẫn → đánh dấu cần người review; thiếu thông tin → bỏ qua, không bịa assignee.
+M: - **Feedback & quality bar:** thumbs + form; theo dõi % pass hằng tuần, cảnh báo khi dưới 85%.
+
+ESSAY: Trình bày cách phân tích ROI cho một AI feature và cách nói chuyện với CFO để xin đầu tư.
+K: Cost gồm Build, Run, Operate (kể cả human review, monitoring)
+K: Value: time saved, throughput, revenue, cost avoidance, giảm rủi ro
+K: Ba kịch bản Conservative / Realistic / Optimistic
+K: Break-even: tháng nào, dưới kịch bản nào, giả định nhạy cảm nào
+K: Cách trình bày: baseline → giả định → giá trị 3–6–12 tháng → điều kiện để giá trị xảy ra + decision ask
+M: **Chi phí:** Build (dev, tích hợp), Run (API, compute, storage), Operate (human review, monitoring, bảo trì) — phần Operate hay bị quên.
+M: **Giá trị:** thời gian tiết kiệm, throughput, doanh thu tăng thêm, chi phí tránh được, giảm rủi ro.
+M: **Ba kịch bản:** Conservative / Realistic / Optimistic để stakeholder thấy phạm vi chứ không phải một con số đẹp. Tính break-even cho từng kịch bản và chỉ ra giả định nào đẩy mốc ra xa (adoption rate, chi phí review, giá API, chi phí xử lý lỗi).
+M: **Nói với CFO:** bắt đầu từ baseline hôm nay → giả định thay đổi → giá trị sau 3–6–12 tháng → điều kiện cần để giá trị xảy ra; kết thúc bằng decision ask rõ ràng (go / pilot / no-go). Executive deck nhấn mạnh business value, scenario, risk exposure — không sa vào chi tiết kiến trúc.
+
+ESSAY: Thiết kế pipeline ingestion và chiến lược chunking cho kho tài liệu chính sách nội bộ (PDF, Word, một phần là ảnh scan) để phục vụ RAG.
+K: Governance trước khi index: owner, quyền truy cập/ACL, tần suất re-index, PII
+K: Input Control: detect MIME thật, chọn extractor (OCR cho ảnh scan), fail nhanh + log
+K: Processing: làm sạch, chuẩn hoá Unicode NFC, xuất Markdown, giữ bảng
+K: Chunking theo heading/structure (hoặc parent-child) 200–500 token, overlap hợp lý, kiểm chứng bằng eval
+K: Metadata đầy đủ (source, version, updated, access) + xử lý version mâu thuẫn và cách debug ngược
+M: **Governance:** xác định owner từng nhóm tài liệu, ai được xem (ACL), re-index bao lâu một lần, có PII cần mask không.
+M: **Khối 1 — Input Control:** detect MIME/magic bytes thay vì tin đuôi file; PDF text → PDF parser, ảnh scan → OCR, Word → docx parser; không có extractor phù hợp thì bỏ qua và ghi log (`mime`, `extractor`, `status`).
+M: **Khối 2 — Processing:** bỏ header/footer, chuẩn hoá Unicode NFC (tiếng Việt), xuất Markdown (tiết kiệm token, giữ heading/bảng), bảng dùng layout-aware parser.
+M: **Khối 3 — Indexing:** chính sách có heading rõ → chunk theo heading/section 200–500 token; nếu retrieve trúng mà thiếu ngữ cảnh thì dùng parent-child. Dùng embedding multilingual, kết hợp BM25 cho mã văn bản/số điều.
+M: **Metadata:** source, version, updated_at, category, access level; chính sách v2/v3 mâu thuẫn → giữ bản mới nhất, đánh dấu bản cũ deprecated.
+M: Khi retrieval sai, debug ngược Indexing → Processing → Input; tối ưu chunking bằng eval chứ không đoán.
+
+ESSAY: Scorecard RAG của bạn: Context Recall 0.55, Faithfulness 0.9, Answer Relevance 0.8. Hãy chẩn đoán và đề xuất lộ trình cải thiện.
+K: Recall thấp + Faithfulness cao → lỗi nằm ở retrieval, không phải generation
+K: Đề xuất hybrid search (BM25 + dense + RRF), query transformation, tăng top-k hợp lý
+K: Kiểm tra lại indexing: parsing, chunking, metadata/pre-filter
+K: Thêm reranker sau khi tăng recall để giữ precision; cân ROI latency/chi phí
+K: A/B mỗi lần một biến trên golden dataset, đưa vào CI gate
+M: **Chẩn đoán:** Faithfulness cao nghĩa là model bám đúng những gì được đưa vào; Recall thấp nghĩa là retriever không mang về đủ chứng cứ → vấn đề nằm ở retrieval (đúng với nhận định ~80% lỗi RAG ở retrieval).
+M: **Lộ trình:**
+M: - Kiểm tra indexing: tài liệu có được parse đúng (bảng, 2 cột)? Chunk có cắt ngang ý? Metadata/pre-filter có lọc nhầm?
+M: - Chuyển từ dense thuần sang hybrid (BM25 + dense, gộp bằng RRF) để bắt mã, tên riêng.
+M: - Thêm query transformation khi cần: expansion/đồng nghĩa, decomposition cho câu multi-hop, HyDE khi vocab lệch.
+M: - Tăng top-k retrieve (ví dụ 50) rồi dùng cross-encoder rerank về top 3–5 để không làm loãng context.
+M: - Mỗi thay đổi A/B một biến trên golden dataset 50–100 mẫu, theo dõi cả latency/chi phí; đưa RAGAS vào CI để chặn regression.
+
+ESSAY: Thiết kế kiến trúc supervisor–worker cho "trợ lý hoàn tiền" và chỉ ra cách cắt "bộ ba chết người" nếu hệ có thể gửi email cho khách.
+K: Supervisor chỉ route + tổng hợp; worker chuyên biệt, stateless, test được (policy RAG, order API, synthesis)
+K: State schema: mỗi trường một chủ ghi, có trường lỗi, trace có reducer
+K: Synthesis phải báo thiếu dữ liệu thay vì kết luận khi order_status rỗng
+K: Nhận diện ba chân: dữ liệu riêng tư, nội dung không tin cậy, đường gửi ra ngoài — tính trên cả đồ thị
+K: Cắt ít nhất một chân: send_email chỉ tạo nháp + interrupt duyệt, allowlist người nhận, coi output đọc web/email là dữ liệu
+M: **Kiến trúc:** User → Supervisor (phân tích yêu cầu, route, theo dõi trạng thái, tổng hợp) → order_worker (gọi API đơn hàng), policy_worker (RAG chính sách), synthesis_worker (soạn câu trả lời). Worker chuyên một năng lực, stateless, input/output rõ.
+M: **State:** task, order_id (supervisor ghi), order_status (order_worker), policy_chunks (policy_worker), draft_answer (synthesis), status, error, trace (reducer nối thêm). Synthesis gặp `order_status=None` phải báo thiếu dữ liệu/trả về supervisor.
+M: **Bộ ba chết người:** worker đọc CRM (dữ liệu riêng tư) + worker đọc email/web (nội dung không tin cậy) + tool `send_email` (đường ra ngoài). Không agent nào đủ 3 chân nhưng cả hệ thì có.
+M: **Cắt chân:** `send_email` chỉ tạo bản nháp, nhân viên duyệt qua `interrupt()`; allowlist người nhận chỉ là khách trong thread; output của worker đọc email/web chỉ là dữ liệu, được quét injection và không được kích hoạt tool. Thêm verifier trước khi kết thúc và trace đầy đủ.
+
+ESSAY: Lập checklist đưa một agent từ localhost lên production phục vụ 100 người dùng đồng thời.
+K: Container hoá (Dockerfile multi-stage, non-root, healthcheck) và 12-factor: config qua env, stateless (session ra Redis), đọc PORT
+K: Bảo mật: secret manager, HTTPS, API key/JWT auth, rate limit + cost guard theo token
+K: Reliability: /health và /ready, timeout, retry + backoff, circuit breaker, graceful shutdown
+K: CI/CD với test, security scan, staging, deploy không downtime (rolling/blue-green/canary) và rollback < 5 phút
+K: Observability: log JSON tập trung, error tracking, alert, chọn nền tảng phù hợp (Railway/Render trước)
+M: - **Đóng gói:** Dockerfile multi-stage, image slim < 500 MB, non-root, pin version, `HEALTHCHECK`; docker-compose cho app + DB + Redis khi dev.
+M: - **12-Factor:** config và secret qua biến môi trường (không commit `.env`), app stateless (session/history ra Redis) để scale ngang, đọc `PORT` từ env, dev/prod parity.
+M: - **Bảo mật:** HTTPS, auth bằng API key (`X-API-Key`, sai trả 401) hoặc JWT, CORS không để `*`, rate limit theo gói + cost guard theo token/ngày.
+M: - **Reliability:** `/health` (liveness) và `/ready` (readiness), timeout cho mọi call ra ngoài, retry + exponential backoff có giới hạn, circuit breaker, xử lý SIGTERM.
+M: - **CI/CD:** lint → test → build image → security scan; staging với dữ liệu giả; deploy qua pipeline (rolling/blue-green/canary), rollback dưới 5 phút.
+M: - **Nền tảng:** bắt đầu Railway/Render (deploy < 10 phút), chỉ lên Cloud Run/ECS/K8s khi cần; tránh serverless nếu cold start ảnh hưởng UX.
+M: - **Observability:** log JSON tập trung, error tracking, alert uptime/latency/cost; load test gấp 2 lần traffic dự kiến.
+
+ESSAY: Thiết kế hệ thống monitoring và evaluation cho một agent RAG vừa lên production.
+K: Metrics: 4 golden signals + Cost + Quality; TTFT và P95/P99; không dùng high-cardinality label
+K: Structured logging có correlation_id, sanitize PII, sampling giữ 100% lỗi; tracing bằng OpenTelemetry/Langfuse
+K: SLO và alert theo symptom, burn rate, có runbook; dashboard 3 layer
+K: Offline eval: dataset có coverage (input grid), evaluator code → judge (đã calibrate) → human, release gate
+K: Online: sample trace để chấm chất lượng, theo dõi drift và đưa lỗi mới ngược về dataset
+M: **Monitoring:**
+M: - Metrics: latency (TTFT, P50/P95/P99), traffic, error rate, saturation + cost ($/request, tag user_id/feature/model trong log/trace) + quality (groundedness, hallucination rate sample). Không dùng `user_id` làm metric label.
+M: - Log JSON có `correlation_id`, scrub PII trước khi ghi, sampling 100% ERROR/WARN, ~10% INFO; tracing bằng OpenTelemetry (GenAI semantic conventions) + Langfuse để thấy span nào chậm.
+M: - SLO (ví dụ P95 ≤ 3s, error < 1%, cost/ngày ≤ budget), alert theo symptom và multi-window burn rate, mỗi alert có runbook; dashboard 3 layer: overview, golden signals + cost + quality, drill-down.
+M: **Evaluation:**
+M: - Offline: dataset dựng bằng User Input Grid (con người kiểm soát coverage), evaluator theo thứ tự code-based → LLM judge (1 tiêu chí, Pass/Fail, calibrate bằng TPR/TNR với nhãn người) → expert; chạy làm release gate với ngưỡng chốt trước.
+M: - Online: sample trace hằng ngày để chấm, theo dõi drift (PSI, regenerate rate), đọc trace lỗi và đưa case mới vào dataset — vòng lặp liên tục.

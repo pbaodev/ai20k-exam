@@ -1,0 +1,193 @@
+# Giải thích cho 10 câu trắc nghiệm ở cuối các file md (đánh số theo thứ tự câu trong md).
+
+@EXPL DAY2
+1: Thông điệp của bài: dự án AI hiếm khi chết vì thiếu model mà vì chọn sai bài toán, sai kiến trúc và không đặt gate GO/NO-GO đúng lúc. GPU, dữ liệu hay model mạnh hơn không cứu được một bài toán chọn sai.
+2: "No baseline" là build AI khi chưa có rule/manual/heuristic baseline để so sánh, nên không chứng minh được AI tốt hơn cái gì. Chạy theo trend là Trend-first, thiếu bộ test là No eval path, không ai chịu trách nhiệm là No owner of failure.
+3: Việc deterministic, rule rõ thì rule engine/workflow thường rẻ, ổn định và dễ kiểm soát — dùng AI ở đây là overkill. RAG/agent chỉ đáng khi có tài liệu phân tán hoặc nhiều bước, nhiều tool.
+4: AI Readiness Checklist có 5 câu (Value · Baseline · Eval · Tolerance · Operations). Dưới 3 câu YES thì nên dừng lại vì thiếu quá nhiều điều kiện để chứng minh giá trị và vận hành an toàn.
+5: Tools đọc/ghi hệ thống bên ngoài nên failure mode là side effects và prompt injection; control tương ứng là sandbox, allowlist, HITL. Model → hallucination, Context → retrieval sai/cũ, Planning → looping.
+6: Decision shortcut: biến đổi text → prompt + structured output; cần tra cứu → retrieval; nhiều bước có điều kiện → workflow có state; chỉ khi cần tự chọn bước, tự gọi nhiều tool và có feedback loop mới tính đến agent.
+7: Khung Problem Statement gồm Actor, Current Workflow, Bottleneck, Impact, Success Metric, Operational Boundary. Ghi tên model là lỗi "solution-first" — mô tả giải pháp trước khi mô tả vấn đề.
+8: Gate Deploy Controls đòi hỏi HITL, logging, rollback và owner. Nếu không rõ ai duyệt output, ai dừng hệ thống khi sai thì deploy chẳng khác gì đánh bạc → No-Go.
+9: "Not Yet" dành cho trường hợp có pain thật nhưng còn thiếu data, metric hoặc boundary. Rule đã đủ tốt hay hậu quả khi sai quá đắt là No-Go; mọi thứ đã rõ là Go.
+10: Pitch đúng nối pain hôm nay → workflow metric → business impact → lựa chọn kiến trúc. Stakeholder quan tâm giảm SLA breach, giảm cost/ticket — không phải "87% accuracy" hay model mới nhất.
+
+@EXPL DAY3
+1: Agent chỉ thật sự xuất hiện khi hệ thống phải quyết định → hành động → quan sát kết quả → lặp lại. Có dùng LLM, có giao diện chat hay có long-term memory đều chưa đủ để gọi là agent.
+2: ReAct = Thought (đang thiếu gì, làm gì tiếp) → Action (gọi tool với tham số) → Observation (kết quả trả về), lặp tới khi đủ thông tin rồi mới đưa Final Answer.
+3: Agentic Fit gồm 4 tiêu chí: multi-step reasoning, tool interaction, dynamic decision, long horizon. Kích thước model không phải tiêu chí để đánh giá bài toán có hợp agent hay không.
+4: Thang điểm Agentic Fit: 0–5 thì chatbot/rule là đủ, 6–10 nên dùng augmented chatbot, từ 11 trở lên agent mới đáng thử (ví dụ code assistant có test-fix loop được 14 điểm).
+5: FAQ một bước không cần lập kế hoạch hay vòng lặp tool, dùng agent chỉ tốn thêm token và latency. Code assistant, booking, research là bài toán nhiều bước nên hợp agent.
+6: Short-term memory nằm ngay trong context window (rẻ nhưng dễ đầy). Long-term memory mới nằm ở DB, vector store, KV store và cần chiến lược retrieval + permission model.
+7: Dấu hiệu loop: gọi lặp lại cùng một tool call, hỏi lại thông tin đã có, observation không đổi mà agent vẫn chạy tiếp. Cần safeguard như max iterations và phát hiện lặp.
+8: ReAct lộ ra Thought trước mỗi hành động nên trace dễ đọc, dễ debug và can thiệp. Đổi lại nó tốn token và latency hơn — không rẻ hay nhanh hơn chỉ trả final answer.
+9: Khi có nhiều nhánh hoặc cần persist state, vòng while đơn giản khó quản lý → chuyển sang graph/state machine như LangGraph (State → LLM node → Tool node → conditional edge).
+10: Hybrid pattern: triage intent ở đầu vào, câu đơn giản đi chatbot path (nhanh, rẻ), câu phức tạp mới mở agent loop, có fallback human escalation. Mặc định nên bắt đầu bằng chatbot.
+
+@EXPL DAY4
+1: Bốn thành phần: Role · Task · Context · Format. Nên bắt đầu với Task + Format, chỉ thêm Role/Context khi chúng thật sự cải thiện kết quả.
+2: Scaffolding ladder: thử zero-shot trước, chưa đủ thì few-shot, rồi mới đến CoT/decomposition — đi từ rẻ, đơn giản tới tốn token hơn.
+3: Lost in the Middle: model nhớ tốt phần đầu và cuối nhưng bỏ sót phần giữa context dài → đặt instruction quan trọng ở đầu, nhắc lại yêu cầu ở cuối, đưa chunk liên quan nhất gần câu hỏi.
+4: XML tags/delimiters giúp model phân biệt instruction với data và parse tốt hơn, nhưng KHÔNG phải security boundary — prompt injection vẫn có thể lọt qua.
+5: Model chỉ sinh JSON `tool_calls` (name + arguments). Ứng dụng của bạn mới thực thi hàm thật, rồi gửi kết quả về bằng message role "tool" để model tổng hợp câu trả lời.
+6: Enum khoá tập giá trị hợp lệ ngay trong schema, giúp model không bịa giá trị. String tự do hay mô tả dài trong prompt không ràng buộc được đầu ra.
+7: Gọi song song chỉ dành cho các tool độc lập. Nếu tool B cần output của tool A làm input thì phải gọi tuần tự, gọi song song sẽ thiếu dữ liệu đầu vào.
+8: Bọc try/except, validate bằng Pydantic, gửi raw error ngược lại cho LLM để nó tự sửa và retry có giới hạn (2–3 lần). Tuyệt đối không bịa kết quả và không để ứng dụng crash.
+9: Write action nằm cao trên risk ladder. Approval phải được enforce ở tầng ứng dụng (kèm logging) vì lời dặn trong prompt có thể bị model bỏ qua hoặc bị injection vượt qua.
+10: Reducer `add_messages` khiến các message mới được nối (append) vào lịch sử thay vì ghi đè, nhờ vậy giữ đủ hội thoại khi đi qua nhiều node.
+
+@EXPL DAY6
+1: AI có nhiều unknowns, giả định chỉ kiểm chứng được sau prototype/eval, nên quản lý theo Agile + scientific method: thử → đo → học → rồi mới đầu tư tiếp. Waterfall với timeline cứng không hợp.
+2: MVE (Minimum Viable Experiment) dùng để test giả định giá trị nhanh nhất: user có thật sự muốn không. Ship bản dùng được là MVP, xin phê duyệt đầu tư là PoC.
+3: PoC nhằm giảm bất định cho sponsor — trả lời câu "có đáng đầu tư thêm không". Muốn học nhanh thì dùng MVE; MVP là bản nhỏ dùng được.
+4: Wizard of Oz: phía sau "AI" là người làm thủ công, giúp kiểm chứng value và workflow trước khi đầu tư build. Mục đích là học, không phải lừa user.
+5: Definition of Done của AI feature không dừng ở "code chạy" mà phải có quality threshold, latency, fallback và monitoring signal (ví dụ citation coverage đủ, escalation path rõ).
+6: Tool integration hay bị ước lượng thiếu vì chỉ tính phần code; thực tế còn error handling, retries, timeout chiếm nhiều công sức.
+7: PoC Canvas khuyến nghị timebox 2–4 tuần với scope hẹp (1 workflow, 1 nhóm user, 1 bộ data) và success criteria chốt trước khi làm.
+8: PoC không nên ôm toàn bộ scope, hứa production-ready hay dùng demo đẹp để che metric yếu. Nó chỉ nên giảm bất định chính và đo giá trị ban đầu.
+9: Ba kịch bản (Conservative / Realistic / Optimistic) cho stakeholder thấy phạm vi kết quả có thể xảy ra và các giả định nhạy cảm, thay vì một con số đẹp dễ gây hiểu lầm.
+10: Executive deck nói bằng ngôn ngữ kinh doanh: ROI, kịch bản, adoption, risk exposure và decision ask (go / pilot / no-go). Kiến trúc chi tiết, eval pipeline thuộc technical deck.
+
+@EXPL DAY8
+1: Khoảng 80% lỗi RAG nằm ở Retrieval: không mang về đúng chứng cứ thì model giỏi đến đâu cũng trả lời sai. "Your LLM is only as smart as your retrieval system."
+2: RAG giống "open-book exam": cập nhật kiến thức bằng cách sửa index (rẻ), có citation, dễ phân quyền theo tài liệu. Fine-tuning hợp đổi tone/format, còn nhồi facts thì đắt và dễ catastrophic forgetting.
+3: Recursive chunking (mặc định LangChain) thử tách theo `\n\n` → `\n` → `.` → từ, tôn trọng ranh giới tự nhiên cho tới khi chunk vừa kích thước.
+4: Small-to-Big: search trên chunk con nhỏ để khớp chính xác, rồi gửi chunk cha lớn cho LLM để có đủ ngữ cảnh khi trả lời.
+5: Mã lỗi, ID, tên riêng cần khớp chính xác từ khoá nên sparse/BM25 mạnh nhất. Dense embedding yếu exact match (ERR-809 và ERR-810 nhìn "gần" nhau về nghĩa).
+6: Điểm cosine và điểm BM25 khác thang đo nên không cộng trực tiếp được. RRF dùng thứ hạng: 1/(k + rank_dense) + 1/(k + rank_sparse), với k ≈ 60.
+7: Cross-encoder ghép query + document qua transformer nên chấm chính xác hơn nhưng chậm → chỉ dùng rerank danh sách nhỏ (top 50–100). Bi-encoder encode riêng, nhanh, dùng cho vector DB.
+8: HyDE cho LLM sinh một câu trả lời giả định rồi embed nó để tìm tài liệu thật, vì vector của câu trả lời gần vector tài liệu hơn vector của câu hỏi.
+9: Recall cao nghĩa là retriever đã mang về đủ chứng cứ; Faithfulness thấp nghĩa là model không bám context (bịa hoặc lú) → sửa phía generation: prompt, citation, temperature.
+10: Mỗi lần A/B chỉ đổi MỘT biến để biết chính xác thay đổi nào tạo ra cải thiện hay regression; đổi nhiều biến cùng lúc thì không quy được nguyên nhân.
+
+@EXPL DAY10
+1: BI hỏng thì dashboard vỡ — fail loud. Agent/RAG hỏng thì vẫn trả lời trôi chảy, tự tin và sai — fail silent. Observability tồn tại để biến silent thành loud trước khi user phàn nàn.
+2: ELT load raw trước rồi transform trong warehouse. Giữ raw giúp transform lại khi đổi chunking/embedding, và compute trong warehouse rẻ — rất hợp corpus RAG.
+3: Log-based CDC (Debezium) đọc WAL/binlog: không thêm tải query vào DB nguồn và thấy cả thay đổi trung gian. Query-based (`updated_at > last_sync`) dễ làm nhưng bỏ sót bản ghi tạo rồi xoá.
+4: NFC và NFD hiển thị giống nhau nhưng khác byte (macOS hay lưu NFD) → dedup, exact-match, keyword search hỏng âm thầm. Phải chuẩn hoá NFC trước khi embed.
+5: Medallion: Bronze (raw) → Silver (dedupe, chuẩn hoá, check chất lượng) → Gold (serve). Agent đọc từ Gold, không bao giờ trỏ RAG vào Bronze.
+6: Đổi embedding model hoặc chiến lược chunking làm thay đổi vector space/chunk → phải re-embed toàn bộ. Thêm hay sửa vài tài liệu chỉ cần upsert. Không trộn embedding của 2 model trong 1 index.
+7: Fail-closed: dừng lại và serve dữ liệu cũ-nhưng-đúng — hợp chính sách pháp lý, số liệu tài chính (trả lời cũ rẻ hơn trả lời sai). Fail-open hợp giá, tồn kho real-time.
+8: Cột được thêm mới không làm pipeline vỡ nên hoàn toàn im lặng, dữ liệu mới dễ bị bỏ sót hoặc hiểu sai. Xoá hay đổi tên cột thường gây lỗi rõ ràng nên dễ phát hiện hơn.
+9: DELETE trong vector DB thường chỉ là soft-delete: float32 vẫn nằm trên đĩa, có thể trích ra và inversion → xoá row không đồng nghĩa xoá embedding, vi phạm yêu cầu xoá verifiable (GDPR Art.17).
+10: Idempotency: dùng UPSERT thay INSERT, đọc theo partition (`data_interval_start`), không dùng `datetime.now()` → chạy lại hay backfill không tạo bản ghi trùng (at-least-once + idempotent = effectively-once).
+
+@EXPL DAY14
+1: Model mới ra hằng tuần; nếu chưa dám ship trong ngày thì nút thắt là evaluation — thiếu bộ eval chạy lại được với input thật cố định và tiêu chí Pass/Fail rõ.
+2: Software truyền thống có pass/fail 0/1. AI cùng một input chạy nhiều lần cho ra một phân bố chất lượng → phải đo success rate chứ không chỉ một lần đúng/sai.
+3: Bốn quy tắc ghi chú: ghi cụ thể, ghi triệu chứng trước khi đoán nguyên nhân, chỉ ghi lỗi gốc (xảy ra đầu tiên), ghi tự do trước rồi mới chuẩn hoá thành checklist/trace code.
+4: Phép thử dimension: đổi giá trị của biến mà hành vi đúng của agent phải đổi theo → đó là dimension. Nếu chỉ là cách diễn đạt (lịch sự/cộc lốc) thì để LLM paraphrase.
+5: Prompt chưa từng yêu cầu subject line → specification gap → sửa prompt trước, chưa cần viết eval. Eval dành cho generalization gap (lúc được lúc không).
+6: Ưu tiên code-based (rẻ, ổn định: format, schema, tool sequence) → LLM judge cho các sắc thái → Human/Expert cho chuẩn chuyên môn và critical path.
+7: Judge prompt tốt: một tiêu chí, verdict nhị phân Pass/Fail, có ví dụ sát ranh giới, reasoning trước verdict, khác họ model với agent để tránh thiên vị "người nhà".
+8: Calibration so từng dòng với nhãn người và đo TPR (nhận đúng output tốt) cùng TNR (bắt được output lỗi). Cùng pass rate tổng vẫn có thể lệch nhau ở nhiều dòng.
+9: CSKH cần nhất quán nên dùng pass^k (đúng cả k lần). Đúng 90% mỗi lần chỉ còn khoảng 43% đúng cả 8 lần liên tiếp; pass@k (đúng ít nhất 1 lần) hợp việc sinh ý tưởng.
+10: 78% vượt ngưỡng 75% đã chốt trước nên ship được. Nhưng trên 50 ticket có 7 cải thiện và 3 regression — gần như tung đồng xu — nên chưa đủ bằng chứng nói prompt mới tốt hơn.
+
+@EXPL DAY17
+1: ReAct không có cơ chế tự đánh giá nên lỗi lan toả, dễ loop vô hạn và không backtrack được. Các lớp như Reflexion bổ sung chính khả năng tự đánh giá này.
+2: Reflexion: Actor sinh lời giải → Evaluator chấm → Reflector rút bài học → Retry, kèm reflection memory. Feedback bằng text thay cho gradient.
+3: Evaluator dùng chung context/model với Actor dễ bị "thuyết phục" đồng ý theo (correlated failure) → tách context, dùng rubric tường minh và bắt trích bằng chứng.
+4: LATS (MCTS + LLM) đạt 92.7% nhưng tốn 3–5× compute và cần môi trường cho phép undo/rollback → chỉ đáng dùng cho task giá trị cao.
+5: ORM chỉ chấm đáp án cuối; PRM chấm từng bước suy luận nên bắt được lỗi sớm, trước khi nó lan ra cả chuỗi.
+6: `wrap_tool_call` bọc quanh mọi lần gọi tool: có thể chặn, đổi tham số, inject context, intercept result → nơi đặt gating/guardrail bất biến cho hành động của agent.
+7: Critic (Reflexion) chạy sau khi model trả output nên đặt ở `after_model` — cũng là nơi validate schema, redact và phát hiện lặp.
+8: Plan file trên đĩa addressable (tham chiếu được), diffable (thấy được thay đổi) và sống sót qua compaction, trong khi plan nằm trong context có thể bị nén mất.
+9: Đừng đợi context đầy mới nén: workload đơn giản nén ở khoảng 5–20k token, phức tạp ở 50–100k, cắm vào hook `before_model`.
+10: Luật trong prompt chỉ là "lời đề nghị", model có thể bị thuyết phục bỏ qua. Enforcement phải nằm ở tầng infrastructure: allowlist, capability manifest tại `wrap_tool_call`.
+
+@EXPL DAY18
+1: Mỗi API call vẫn stateless và reset mỗi session; context dài bị context rot, đắt và chậm (p95 17.1s so với 1.4s khi nạp memory chọn lọc) → model 1M token vẫn cần memory.
+2: Thứ tự cắt khi gần token limit: tool outputs cũ → retrieval → memory → user history → task. System và Policy là lớp được PIN, không bao giờ bị cắt.
+3: Nhật ký trải nghiệm có thứ tự (đã thử gì, kết quả ra sao) là episodic memory. Semantic là tri thức domain, long-term là facts/preferences của user.
+4: Sliding window = system + summary + K lượt cuối: giữ chi tiết gần, tóm tắt phần cũ → best tradeoff. Buffer giữ tất cả sẽ chạm giới hạn, chỉ summary thì mất chi tiết gần.
+5: Recency wins cho hiện trạng, nhưng gắn `valid_to` để invalidate fact cũ thay vì xoá, nhờ vậy vẫn trả lời được "trước đây dùng gì" (kiểu bi-temporal của Zep/Graphiti).
+6: Checkpointer lưu theo `thread_id` = short-term của một thread. Store theo namespace (ví dụ `("users", user_id, "facts")`) = long-term dùng chung giữa các thread của cùng user.
+7: Namespace/key không scope theo `user_id` thì dữ liệu mọi user nằm chung một chỗ → user B nhận sở thích của user A. Đây là bug kinh điển của memory.
+8: Right to be forgotten phải xoá ở mọi nơi: embeddings, summaries, cache, backup, agent khác — và xác minh đã xoá. Chỉ xoá profile Redis là chưa đủ.
+9: AGENTS.md/CLAUDE.md/MEMORY.md là control plane nạp đầu phiên để cố định hành vi, workflow, memory schema. Chúng không có TTL, rerank hay provenance nên không phải retrieval engine.
+10: Memory là attack surface (OWASP ASI06). Nội dung email là dữ liệu chứ không phải lệnh; ghi memory bền cần provenance + allowlist loại memory, instruction mới phải qua human review.
+
+@EXPL DAY19
+1: Hierarchical chunking (parent 2048 / child 256): match trên child nhỏ để chính xác, inject parent lớn để đủ ngữ cảnh (AutoMergingRetriever, ParentDocumentRetriever).
+2: Late chunking embed cả document trước bằng encoder long-context rồi mới pool theo ranh giới chunk, nên vector của mỗi chunk thấm ngữ cảnh toàn cục.
+3: Contextual embeddings giảm lỗi retrieval 49% (embed + BM25) và 67% khi thêm reranking, đổi lại tốn thêm 1 LLM call cho mỗi chunk lúc index.
+4: SPLADE là learned sparse: mở rộng term để đóng vocab gap mà vẫn chạy trên inverted index. ColBERT là late interaction, ColPali embed thẳng ảnh trang PDF, RAPTOR là cây tóm tắt.
+5: Câu hỏi gồm nhiều phần → Multi-Query tách thành nhiều truy vấn con để retrieve đủ từng phần. HyDE dành cho vocab lệch, CRAG cho retrieve kém, compression cho context dư.
+6: CRAG chấm điểm các chunk retrieve được rồi rẽ nhánh: correct → dùng, ambiguous → rewrite query, wrong → fallback web search.
+7: Context Precision thấp nghĩa là chunk liên quan bị xếp thấp hoặc lẫn nhiễu → sửa ở tầng xếp hạng: reranking, score threshold, metadata filter.
+8: Multi-tenant phải lọc ngay lúc search bằng ACL metadata gắn trên từng chunk. Dặn trong prompt hay lọc sau khi LLM trả lời đều có thể làm rò rỉ dữ liệu.
+9: Ngưỡng cosine 0.92–0.95 là cân bằng: quá cao thì cache hiếm khi hit, quá thấp thì trả nhầm câu trả lời của câu hỏi khác. Luôn kèm TTL.
+10: Blue-green index + alias (Qdrant, Milvus): build index mới song song rồi swap alias tức thì, rollback được, zero-downtime. Không trộn embedding của 2 model trong một index.
+
+@EXPL DAY20
+1: Tin tức (ca sĩ bị bắt) và luật (Điều 256a BLHS) nằm ở hai nguồn không liên kết, flat RAG không nối được nên trả "không có thông tin". GraphRAG nối hai mảnh bằng quan hệ.
+2: Triple (Subject)–[Predicate]→(Object) là nguyên tử của Knowledge Graph, ví dụ (Sam Altman)-[CEO_OF]->(OpenAI).
+3: Property Graph (Neo4j, FalkorDB) truy vấn bằng Cypher, ví dụ `MATCH (p:Person)-[:CO_FOUNDED]->(c:Company)`. RDF mới dùng SPARQL.
+4: Entity resolution gộp các cách gọi khác nhau của cùng một thực thể về một node. Disambiguation thì ngược lại: tách "Apple" công ty khỏi quả táo.
+5: GLiNER/GLiREL trích xuất theo nhãn mô tả (truyền tên nhãn bằng ngôn ngữ tự nhiên), khác với luật & từ điển, supervised hay LLM theo schema.
+6: Graph retrieval: trích entity từ câu hỏi → tìm seed nodes → duyệt đồ thị BFS k-hop → textualize subgraph → LLM sinh câu trả lời.
+7: Seed sai hoặc traversal quá rộng kéo theo nhiễu và chi phí tăng theo cấp số với số hop → lọc loại/hướng cạnh, giới hạn node/path, rerank. Tăng số hop chỉ làm tệ hơn.
+8: NetworkX là thư viện Python nhẹ, hợp để prototype. Neo4j dành cho production, GraphFrames cho batch lớn trên Spark.
+9: GraphRAG có chi phí index cao hơn (extraction, resolution, summaries) và vẫn tốn chi phí cập nhật; index đắt hơn không có nghĩa là query rẻ hơn.
+10: "Sở hữu gián tiếp qua B" là câu hỏi multi-hop nối nhiều thực thể → Graph RAG. Flat RAG hợp khi thông tin nằm gọn trong vài đoạn văn.
+
+@EXPL DAY21
+1: Decision rule: nếu single agent đã đạt trên 80% accuracy thì không thêm agent — "Start simplest, only add agents when measurably needed".
+2: Ba lý do dùng multi-agent: Specialization (mỗi agent giỏi một domain), Parallelization (subtask song song giảm latency), Cross-checking (đồng thuận giảm hallucination).
+3: MAST chia 14 failure modes thành 3 nhóm: specification/system design, inter-agent misalignment, verification/termination → định nghĩa role, stop condition, rubric trước khi code.
+4: Năm pattern xếp theo độ phức tạp và failure mode tăng dần, nên thử Prompt Chaining (tuần tự, validate từng bước) trước tiên.
+5: Routing gửi khoảng 70% query dễ cho model nhỏ và 30% query khó cho model lớn → giảm hơn 50% chi phí, với điều kiện bộ phân loại chính xác.
+6: Supervisor dễ rơi vào routing loop (A → B → A) hoặc chọn sai worker → thêm max iterations guard để chặn.
+7: Nhiều instance của cùng một model dễ cùng sai một kiểu (collective delusion). Dùng các model đa dạng (GPT + Claude + Gemini) để phủ blind spot của nhau.
+8: "Parallel ≠ always faster": dependency, lock state và merge conflict có thể triệt tiêu speedup → phải đo trước khi song song hoá.
+9: Mỗi lần handoff thông tin có thể rơi rớt — context loss across handoffs là lỗi phối hợp lớn nhất, và cần tracing để debug.
+10: LangGraph là state machine cho full control state → hợp production. CrewAI hợp prototype, AutoGen hợp debate/hội thoại, OpenAI Agents SDK cho use case đơn giản.
+
+@EXPL DAY23
+1: Phần biết trước do kỹ sư vẽ thành graph (deterministic shell), phần không biết trước để model tự chọn (agentic core); mọi hành động có hậu quả đi qua cổng kiểm.
+2: 0.95^10 ≈ 0.60 — rủi ro nhân lên theo số bước, nên cần kiểm tra giữa chừng và lưu trạng thái.
+3: Hai node trong cùng super-step ghi vào một key không có reducer thì LangGraph không biết gộp thế nào → báo InvalidUpdateError.
+4: `Send` fan-out ra số nhánh được quyết định lúc chạy (kiểu map-reduce), mỗi nhánh nhận state riêng của nó.
+5: Resume chạy lại node từ đầu chứ không phải từ dòng `interrupt()` → API hoàn tiền bị gọi hai lần. Đặt side effect ở node riêng sau bước duyệt, kèm idempotency key.
+6: Durability `sync` lưu checkpoint xong mới chạy tiếp → an toàn nhất cho bước liên quan đến tiền. `async` (mặc định) nhanh hơn nhưng có thể mất bước cuối khi crash.
+7: Checkpoint chỉ gắn với một thread. Thông tin dùng qua nhiều vụ/nhiều thread của cùng khách hàng thuộc về Store (namespace + semantic search).
+8: Prompt chỉ khuyên, middleware mới ép: luật đặt trong `wrap_tool_call` trả về ToolMessage giải thích khi chặn, không phụ thuộc model có nghe lời hay không.
+9: Thêm agent giúp +80.8% khi việc chia được thành phần độc lập nhưng gây −70% khi planning tuần tự (bước sau phụ thuộc bước trước) → chọn theo cấu trúc phụ thuộc.
+10: Nhiều agent đọc, một agent ghi giúp tránh xung đột ghi và lệch pha; reviewer có context sạch chỉ gửi nhận xét chứ không ghi.
+
+@EXPL DAY24
+1: L1 Heuristic (regex, schema) rất rẻ nên chạy trên 100% request; L2 RAGAS ~10–20%, L3 LLM-as-Judge ~1–5%, L4 Human ~0.1% để calibrate.
+2: Context Recall so context với ground truth nên bắt buộc có GT. Faithfulness, Answer Relevancy và Context Precision (theo bài) không cần.
+3: Faithfulness = số claim được context support / tổng số claim = 2/3 ≈ 0.67.
+4: Recall cao = đã lấy đủ thông tin; Precision thấp = chunk liên quan bị xếp thấp → thêm re-ranker hoặc hybrid retrieval.
+5: Answer Relevancy dùng reverse-question generation: từ câu trả lời sinh khoảng 3 câu hỏi rồi đo similarity với câu hỏi gốc — không phải cosine trực tiếp giữa Q và A.
+6: Swap-and-average đổi vị trí hai câu trả lời, chấm hai lần rồi lấy trung bình → khử position bias của judge.
+7: Cohen's kappa < 0.40 là yếu, 0.40–0.60 dùng thận trọng, ≥ 0.60 là mức tối thiểu cho production (cần ≥ 50 cặp, lý tưởng 200+).
+8: NLI (premise = context, hypothesis = câu trả lời) nhanh và rẻ, hợp kiểm tra realtime cho RAG. SelfCheckGPT tốn khoảng 6× cost, semantic entropy hợp chạy offline.
+9: Session poisoning: input độc vẫn nằm trong history dù output đã bị chặn → thay nó bằng placeholder `[Message removed by safety filter]`. Kiến trúc quan trọng hơn công cụ.
+10: Excessive Agency là agent có quá nhiều quyền/tool → giảm bằng tool permissions theo least privilege và HITL cho hành động rủi ro.
+
+@EXPL DAY26
+1: Function Calling là khả năng của model (chọn tool, sinh JSON tham số); MCP là giao thức client–server để khám phá và gọi tool, và dùng Function Calling ở bên dưới — hai tầng bổ sung cho nhau.
+2: Model chỉ trả về `function_calls`; ứng dụng của bạn thực thi hàm thật rồi gửi kết quả lại để model viết câu trả lời.
+3: Description là "lời quảng cáo" giúp model biết khi nào nên dùng tool (hỏi "nên mang gì ra ngoài?" vẫn gọi `get_weather`). Name phải đúng từng chữ nhưng không quyết định khi nào dùng.
+4: Model sinh JSON tốt. Ba nhược điểm thật dẫn đến MCP là schema viết tay dễ lệch với hàm, tool bị khoá trong một app, và mỗi provider một format.
+5: MCP công bố ba loại: Tools (hành động, model quyết gọi), Resources (dữ liệu đọc theo URI), Prompts (template gợi ý cho user).
+6: Với MCP, `call_tool()` được server thực thi; secret và quyền DB nằm ở server, client không phải chứa — và một server dùng lại được cho nhiều host.
+7: FastMCP `@mcp.tool()` tự sinh schema từ type hints + docstring → một nguồn sự thật, không lệch giữa hàm và schema (4 dòng thay 20 dòng).
+8: stdio chạy cùng máy nên không cần auth; Streamable HTTP đi qua mạng nên bắt buộc Bearer/OAuth/mTLS + scopes và log ai gọi gì.
+9: Không sửa trực tiếp tool đang chạy: thêm bản v2 song song, đánh dấu v1 deprecated, công bố version và migration guide qua `server://info`.
+10: Trong container, bind 127.0.0.1 chỉ nhận kết nối nội bộ nên bên ngoài không vào được → phải dùng `host="0.0.0.0"` và đọc PORT từ biến môi trường.
+
+@EXPL DAY27
+1: Full autonomy chỉ dành cho hành động đảo ngược được (draft, SELECT, simulation). Hành động không đảo ngược được cần người duyệt.
+2: Human-on-the-Loop: agent tự thực hiện, con người giám sát thụ động và có kill switch/rollback. Human-in-the-Loop: chặn lại chờ duyệt (active blocking).
+3: Từ khoá nhạy cảm hoặc tình huống ngoài phạm vi (khách dọa kiện) → Escalation, chuyển sang bộ phận Pháp lý.
+4: Edit/Correction: người sửa trực tiếp kết quả, phần chênh lệch (delta) là golden data — tạo cặp (prompt, rejected, chosen) cho DPO/RLHF.
+5: Hard rules phải hard-code ở tầng application (if/else, policy engine) và bỏ qua mọi confidence của model; không để LLM tự quyết có bypass hay không.
+6: Self-consistency: sample nhiều lần (ví dụ 5), 4/5 kết quả giống nhau → confidence 0.80. Logprobs là xác suất token, không phải đo độ nhất quán.
+7: Vùng 0.70–0.85 là suggest + wait (chờ one-click approval); ≥ 0.85 auto-execute kèm log, < 0.70 hỏi người.
+8: `interrupt_after` cho agent chạy xong bước rồi người duyệt bản nháp (báo cáo, code, email draft). `interrupt_before` dùng để chặn trước hành động nguy hiểm.
+9: Override rate > 30% nghĩa là người duyệt phải sửa quá nhiều → prompt có vấn đề, agent ảo giác hoặc threshold đang quá lỏng.
+10: Không thể retrofit log hồi tố sau khi agent đã gây lỗi trên production, và audit trail là yêu cầu compliance (SOC2, GDPR, NHNN) → build từ ngày 1, append-only.
