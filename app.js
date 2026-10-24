@@ -113,7 +113,7 @@
         r.essays++;
         var ticks = S.self[i] || [];
         var n = ticks.filter(Boolean).length;
-        if (revealed(i)) { r.essayGraded++; r.essayScore += n / item.k.length; }
+        if (revealed(i) && S.self[i]) { r.essayGraded++; r.essayScore += n / item.k.length; }
         return;
       }
       r.mcq++;
@@ -180,13 +180,22 @@
         }).join('') + '</div>';
     }).join('');
 
-    var exams = EXAMS.map(function (e) {
+    function examCard(e) {
+      var meta = e.mcq.length
+        ? (e.mcq.length + e.essays.length) + ' câu · ' + e.mcq.length + ' trắc nghiệm · ' + e.essays.length + ' tự luận'
+        : e.essays.length + ' câu tự luận · có lời giải mẫu';
       return '<button class="card-link exam-card" data-start="' + e.id + '">' +
         '<div class="card-top"><span class="day-badge">' + esc(e.label) + '</span>' + bestHtml(e.id) + '</div>' +
         '<h3>' + esc(e.title) + '</h3><p>' + esc(e.desc) + '</p>' +
-        '<div class="card-meta">' + (e.mcq.length + e.essays.length) + ' câu · ' + e.mcq.length + ' trắc nghiệm · ' + e.essays.length + ' tự luận</div>' +
-        barHtml(e.id) + '</button>';
-    }).join('');
+        '<div class="card-meta">' + meta + '</div>' + barHtml(e.id) + '</button>';
+    }
+    var fullExams = EXAMS.filter(function (e) { return e.kind !== 'practice'; });
+    var practice = EXAMS.filter(function (e) { return e.kind === 'practice'; });
+    var exams = fullExams.map(examCard).join('');
+    var practiceHtml = practice.length
+      ? '<section class="section"><div class="section-head"><h2>Luyện tự luận</h2><span>Tự chấm theo ý chính</span></div>' +
+        '<div class="grid exams">' + practice.map(examCard).join('') + '</div></section>'
+      : '';
 
     app.innerHTML =
       '<header class="site-header"><div class="wrap">' +
@@ -195,7 +204,8 @@
       '<main class="wrap">' +
         '<section class="hero"><h1>Ôn tập theo ngày, luyện đề tổng hợp</h1>' +
           '<p>Mỗi ngày học có 10 câu trắc nghiệm kèm giải thích. Đề tổng hợp gồm 60 câu: 50 trắc nghiệm (một hoặc nhiều đáp án đúng) và 10 câu tự luận có đáp án gợi ý để tự chấm.</p>' +
-          '<div class="stats"><span class="stat"><b>' + DAYS.length + '</b> bài theo ngày</span><span class="stat"><b>' + totalDayQ + '</b> câu ôn theo ngày</span><span class="stat"><b>' + EXAMS.length + '</b> đề tổng hợp</span></div>' +
+          '<div class="stats"><span class="stat"><b>' + DAYS.length + '</b> bài theo ngày</span><span class="stat"><b>' + totalDayQ + '</b> câu ôn theo ngày</span><span class="stat"><b>' + fullExams.length + '</b> đề tổng hợp</span>' +
+            (practice.length ? '<span class="stat"><b>' + practice.reduce(function (s, e) { return s + e.essays.length; }, 0) + '</b> câu luyện tự luận</span>' : '') + '</div>' +
         '</section>' +
         '<section class="card settings">' +
           '<div><div class="setting-label">Cách hiện đáp án</div>' +
@@ -207,7 +217,7 @@
             '<span>Trộn thứ tự câu hỏi<small>Mỗi lần làm, câu hỏi được xáo lại</small></span></label>' +
         '</section>' +
         '<section class="section"><div class="section-head"><h2>Đề thi tổng hợp</h2><span>60 câu / đề</span></div>' +
-          '<div class="grid exams">' + exams + '</div></section>' +
+          '<div class="grid exams">' + exams + '</div></section>' + practiceHtml +
         '<section class="section"><div class="section-head"><h2>Ôn theo ngày</h2><span>10 câu / ngày</span></div>' + phases + '</section>' +
       '</main>' +
       '<footer class="site-footer">Nội dung tổng hợp từ slide AI20K · Phase 1 & Phase 2</footer>';
@@ -329,12 +339,17 @@
     var item = q(i);
     var ticks = S.self[i] || [];
     var n = ticks.filter(Boolean).length;
-    var paras = [], list = [];
+    var paras = [], list = [], code = null;
     function flush() { if (list.length) { paras.push('<ul>' + list.join('') + '</ul>'); list = []; } }
     item.m.forEach(function (line) {
-      if (/^- /.test(line)) list.push('<li>' + md(line.slice(2)) + '</li>');
-      else { flush(); paras.push('<p>' + md(line) + '</p>'); }
+      if (/^```/.test(line)) {
+        if (code) { paras.push('<pre class="code">' + code.join('\n') + '</pre>'); code = null; }
+        else { flush(); code = []; }
+      } else if (code) code.push(esc(line));
+      else if (/^- /.test(line)) list.push('<li>' + md(line.slice(2)) + '</li>');
+      else if (line) { flush(); paras.push('<p>' + md(line) + '</p>'); }
     });
+    if (code) paras.push('<pre class="code">' + code.join('\n') + '</pre>');
     flush();
     return '<div class="model">' +
       '<div><h4>Đáp án gợi ý</h4><div class="model-answer">' + paras.join('') + '</div></div>' +
@@ -377,15 +392,17 @@
     return '<div class="card nav-card">' +
       '<div class="nav-head" data-act="togglenav"><b>Danh sách câu</b><span>' + t.done + '/' + S.order.length + ' đã làm <span class="nav-toggle">▾</span></span></div>' +
       '<div class="nav-body">' +
-        (essChips.length ? '<div class="sec-label">Trắc nghiệm</div>' : '') +
-        '<div class="chips">' + mcqChips.join('') + '</div>' +
-        (essChips.length ? '<div class="sec-label">Tự luận</div><div class="chips">' + essChips.join('') + '</div>' : '') +
+        (mcqChips.length ? (essChips.length ? '<div class="sec-label">Trắc nghiệm</div>' : '') +
+          '<div class="chips">' + mcqChips.join('') + '</div>' : '') +
+        (essChips.length ? (mcqChips.length ? '<div class="sec-label">Tự luận</div>' : '') +
+          '<div class="chips">' + essChips.join('') + '</div>' : '') +
         '<div class="legend">' + legend + '</div>' +
         '<div class="side-actions">' + actions + '</div>' +
       '</div></div>';
   }
 
   function resultHtml(t) {
+    if (!t.mcq) return essayResultHtml(t);
     var pct = t.mcq ? Math.round(t.right / t.mcq * 100) : 0;
     var verdict = pct >= 90 ? 'Xuất sắc — bạn nắm rất chắc phần này.'
       : pct >= 75 ? 'Tốt — xem lại vài câu sai là ổn.'
@@ -413,6 +430,37 @@
         '<button class="btn" data-act="restart">Làm lại từ đầu</button>' +
         '<a class="btn ghost" href="#/">Trang chủ</a>' +
       '</div></article>';
+  }
+
+  function essayResultHtml(t) {
+    var pct = t.essays ? Math.round(t.essayScore / t.essays * 100) : 0;
+    var done = t.essayGraded === t.essays;
+    var verdict = !t.essayGraded
+      ? 'Mở từng câu, đọc lời giải mẫu và tick các ý chính bài của bạn đã có để tự chấm.'
+      : !done ? 'Bạn đã tự chấm ' + t.essayGraded + '/' + t.essays + ' câu — chấm nốt các câu còn lại để có điểm đầy đủ.'
+      : pct >= 75 ? 'Tốt — bài làm đã bao quát phần lớn ý chính.'
+      : 'Đối chiếu lại lời giải mẫu ở những ý còn thiếu rồi viết lại nhé.';
+    var ring = pct >= 75 ? 'var(--ok)' : pct >= 50 ? 'var(--primary)' : 'var(--bad)';
+    return '<article class="card result">' +
+      '<div class="ring" style="--p:' + pct + ';--ring:' + ring + '"><div><b>' + pct + '%</b><small>' + (Math.round(t.essayScore * 10) / 10) + '/' + t.essays + ' điểm tự chấm</small></div></div>' +
+      '<h2>Kết quả tự luận</h2><p class="verdict">' + verdict + '</p>' +
+      '<div class="rstats">' +
+        '<div class="rstat"><span>Đã tự chấm</span><b>' + t.essayGraded + '/' + t.essays + '</b></div>' +
+        '<div class="rstat ok"><span>Điểm tự chấm</span><b>' + (Math.round(t.essayScore * 10) / 10) + '/' + t.essays + '</b></div>' +
+        '<div class="rstat"><span>Thời gian</span><b>' + fmtTime((S.end || Date.now()) - S.start) + '</b></div>' +
+      '</div>' +
+      '<div class="ractions">' +
+        '<button class="btn primary" data-act="review">Xem lời giải & tự chấm</button>' +
+        '<button class="btn" data-act="restart">Làm lại từ đầu</button>' +
+        '<a class="btn ghost" href="#/">Trang chủ</a>' +
+      '</div></article>';
+  }
+
+  function recordEssayBest() {
+    var t = tally();
+    if (t.mcq || !t.essays || t.essayGraded < t.essays) return;
+    var pct = Math.round(t.essayScore / t.essays * 100);
+    if (best[S.quiz.id] == null || pct > best[S.quiz.id]) { best[S.quiz.id] = pct; store.set('ai20k.best', best); }
   }
 
   // ---------- Actions ----------
@@ -470,6 +518,7 @@
       var pct = Math.round(after.right / after.mcq * 100);
       if (best[S.quiz.id] == null || pct > best[S.quiz.id]) { best[S.quiz.id] = pct; store.set('ai20k.best', best); }
     }
+    if (!S.retry) recordEssayBest();
     renderQuiz();
     scrollToTop();
   }
@@ -512,7 +561,7 @@
         else if (act === 'next') go(S.pos + 1);
         else if (act === 'check') check();
         else if (act === 'submit') submit(false);
-        else if (act === 'result') { S.view = 'result'; renderQuiz(); scrollToTop(); }
+        else if (act === 'result') { S.view = 'result'; recordEssayBest(); renderQuiz(); scrollToTop(); }
         else if (act === 'review') go(0);
         else if (act === 'restart') startQuiz(S.quiz.id);
         else if (act === 'retrywrong') {

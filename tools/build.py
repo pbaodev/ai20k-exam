@@ -120,7 +120,7 @@ def parse_content(path):
                 close_item()
                 cur = {"kind": tag[1:].lower(), "id": val, "items": [], "meta": {}, "expl": {}, "where": where}
                 blocks.append(cur)
-            elif tag in ("@LABEL", "@TITLE", "@SCOPE", "@DESC"):
+            elif tag in ("@LABEL", "@TITLE", "@SCOPE", "@DESC", "@KIND"):
                 cur["meta"][tag[1:].lower()] = val
             else:
                 fail(f"unknown directive {tag} at {where}")
@@ -233,11 +233,14 @@ def main():
         mcq = [x for x in items if "k" not in x]
         essays = [x for x in items if "k" in x]
         multi = sum(1 for x in mcq if len(x["a"]) > 1)
-        if len(mcq) != 50 or len(essays) != 10:
-            fail(f"{b['id']} has {len(mcq)} MCQ / {len(essays)} essays, expected 50 / 10")
         meta = b["meta"]
+        kind = meta.get("kind", "exam")
+        if kind == "exam" and (len(mcq) != 50 or len(essays) != 10):
+            fail(f"{b['id']} has {len(mcq)} MCQ / {len(essays)} essays, expected 50 / 10")
+        if kind == "practice" and not (mcq or essays):
+            fail(f"{b['id']} is empty")
         exams_out.append({
-            "id": b["id"], "label": meta.get("label", b["id"]), "title": meta.get("title", ""),
+            "id": b["id"], "kind": kind, "label": meta.get("label", b["id"]), "title": meta.get("title", ""),
             "scope": meta.get("scope", ""), "desc": meta.get("desc", ""), "mcq": mcq, "essays": essays,
         })
         dist = [0] * 5
